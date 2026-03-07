@@ -4,9 +4,13 @@
  */
 
 // ── Unique ID generator ──
-let counter = 0;
-export const uid = (prefix = "b"): string =>
-  `${prefix}-${++counter}-${Date.now()}`;
+/** Generate a unique ID. Uses crypto.randomUUID when available for SSR safety. */
+export const uid = (prefix = "b"): string => {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+};
 
 // ── File categorization ──
 
@@ -29,9 +33,18 @@ export const fmtSz = (bytes: number): string => {
 /**
  * Sanitize a string for safe rendering.
  * Strips HTML tags and trims whitespace.
+ * NOTE: This provides basic protection only. For rendering user-generated
+ * HTML content, use a dedicated library like DOMPurify instead.
  */
-export const sanitize = (input: string): string =>
-  input.replace(/<[^>]*>/g, "").trim();
+export const sanitize = (input: string): string => {
+  let result = input;
+  let previous: string;
+  do {
+    previous = result;
+    result = result.replace(/<[^>]*>/g, "");
+  } while (result !== previous);
+  return result.trim();
+};
 
 /**
  * Validate that a URL is an allowed protocol (http/https only).
