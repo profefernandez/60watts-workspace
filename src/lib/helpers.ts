@@ -1,9 +1,8 @@
 import { I } from "./icons";
 
 // ── Unique ID generator ──
-let counter = 0;
 export const uid = (prefix = "b"): string =>
-  `${prefix}-${++counter}-${Date.now()}`;
+  `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
 
 // ── File icon resolver ──
 export const fileIcon = (mimeType: string) => {
