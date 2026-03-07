@@ -31,10 +31,10 @@ export const fmtSz = (bytes: number): string => {
 };
 
 /**
- * Sanitize a string for safe rendering.
- * Strips HTML tags and trims whitespace.
- * NOTE: This provides basic protection only. For rendering user-generated
- * HTML content, use a dedicated library like DOMPurify instead.
+ * Sanitize a plain-text string by stripping HTML tags (multi-pass).
+ * WARNING: This is NOT safe for rendering user-generated HTML.
+ * It does not decode HTML entities or handle all XSS vectors.
+ * For rendering untrusted HTML, use DOMPurify or a similar library.
  */
 export const sanitize = (input: string): string => {
   let result = input;
