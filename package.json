@@ -1,0 +1,30 @@
+{
+  "name": "60watts-workspace",
+  "version": "2.0.0",
+  "private": true,
+  "description": "60 Watts of Clarity — The Operating System for Non-Technical Professionals Working with AI",
+  "author": "Jason Fernandez, MA, LMSW",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^14.2.35",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.35",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.3.3"
+  }
+}
