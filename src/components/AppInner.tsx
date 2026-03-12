@@ -1,6 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-
-/* v6 prototype code - see full version */import { useState, useRef, useEffect, useCallback } from "react";
+/* v6 prototype code - see full version */
+import React, { useState, useRef, useEffect, useCallback } from "react";
 
 /* ═══════════════════════════════════════════════════════════
    60 WATTS OF CLARITY — v6
@@ -27,7 +26,7 @@ const C = {
 let u=0;const uid=(p="b")=>`${p}-${++u}-${Date.now()}`;
 
 // ── Icons ──
-const Ic=({d,s=20,...p})=><svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...p}>{typeof d==="string"?<path d={d}/>:d}</svg>;
+const Ic=({d,s=20,...p}:Omit<React.SVGProps<SVGSVGElement>,'d'>&{d:React.ReactNode;s?:number})=><svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...p}>{typeof d==="string"?<path d={d}/>:d}</svg>;
 
 const I={
   file:<Ic d={<><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></>}/>,
@@ -59,13 +58,13 @@ const I={
 };
 
 // Helpers
-const fileIcon=t=>{if(t.startsWith("image"))return I.img;if(t.startsWith("video"))return I.yt;return I.file;};
-const fileCat=t=>{if(t.startsWith("image"))return"Images";if(t.startsWith("video"))return"Videos";if(t.startsWith("audio"))return"Audio";if(t.includes("pdf"))return"PDFs";return"Documents";};
-const fmtSz=b=>{if(b<1024)return b+"B";if(b<1048576)return(b/1024).toFixed(1)+"KB";return(b/1048576).toFixed(1)+"MB";};
+const fileIcon=(t:string)=>{if(t.startsWith("image"))return I.img;if(t.startsWith("video"))return I.yt;return I.file;};
+const fileCat=(t:string)=>{if(t.startsWith("image"))return"Images";if(t.startsWith("video"))return"Videos";if(t.startsWith("audio"))return"Audio";if(t.includes("pdf"))return"PDFs";return"Documents";};
+const fmtSz=(b:number)=>{if(b<1024)return b+"B";if(b<1048576)return(b/1024).toFixed(1)+"KB";return(b/1048576).toFixed(1)+"MB";};
 
 // ── Glass panel style helper ──
-const glass=(extra={})=>({background:C.glass,backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",border:`1px solid ${C.glassBrd}`,borderRadius:"16px",...extra});
-const glassBtn=(extra={})=>({padding:"8px 16px",border:`1px solid ${C.glassBrd}`,borderRadius:"12px",background:C.glass,backdropFilter:"blur(12px)",color:C.tx2,cursor:"pointer",display:"flex",alignItems:"center",gap:"8px",fontSize:"15px",fontWeight:500,transition:"all .25s cubic-bezier(.4,0,.2,1)",fontFamily:"'Satoshi',sans-serif",...extra});
+const glass=(extra:React.CSSProperties={})=>({background:C.glass,backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",border:`1px solid ${C.glassBrd}`,borderRadius:"16px",...extra});
+const glassBtn=(extra:React.CSSProperties={})=>({padding:"8px 16px",border:`1px solid ${C.glassBrd}`,borderRadius:"12px",background:C.glass,backdropFilter:"blur(12px)",color:C.tx2,cursor:"pointer",display:"flex" as const,alignItems:"center" as const,gap:"8px",fontSize:"15px",fontWeight:500,transition:"all .25s cubic-bezier(.4,0,.2,1)",fontFamily:"'Satoshi',sans-serif",...extra});
 
 // ═════════════════════════════════════
 // NOTE: This is the v6 prototype — the working UI.

@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════════════
+   60 WATTS OF CLARITY — Global Styles
+   Spline-inspired 3D Luxury Tech Aesthetic
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  --ob1: #08090C;
+  --ob2: #0E1015;
+  --rg: #E8A87C;
+  --cr: #FAF5EF;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--ob1);
+  color: var(--cr);
+  font-family: "Satoshi";
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ── Selection ── */
+::selection {
+  background: #E8A87C40;
+  color: #FAF5EF;
+}
+
+/* ── Ambient floating orb ── */
+@keyframes orbDrift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.05); }
+  66% { transform: translate(-20px, 15px) scale(0.95); }
+}
+
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  animation: orbDrift 8s ease-in-out infinite;
+  z-index: 0;
+}
+
+/* ── Profé sparkle ── */
+@keyframes profeSparkle {
+  0%, 100% { opacity: 1; transform: translateY(0); }
+  50% { opacity: 0.7; transform: translateY(-8px); }
+}
+
+.profe-sparkle {
+  animation: profeSparkle 3s ease-in-out infinite;
+}
+
+/* ── Logo glow pulse ── */
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 20px #E8A87C40; }
+  50% { box-shadow: 0 0 40px #E8A87C60; }
+}
+
+.logo-glow {
+  animation: glowPulse 3s ease-in-out infinite;
+}
+
+/* ── Gradient shift (send button) ── */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.gradient-shift {
+  background-size: 200% 200%;
+  animation: gradientShift 3s ease infinite;
+}
+
+/* ── Loader spin ── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
