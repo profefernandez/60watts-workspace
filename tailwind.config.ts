@@ -32,9 +32,9 @@ const config: Config = {
         },
       },
       fontFamily: {
-        display: ["'Clash Display'", "sans-serif"],
-        body: ["'Satoshi'", "sans-serif"],
-        mono: ["'JetBrains Mono'", "monospace"],
+        display: ["'Clash Display'"],
+        body: ["'Satoshi'"],
+        mono: ["'JetBrains Mono'"],
       },
       animation: {
         "orb-drift": "orbDrift 8s ease-in-out infinite",
