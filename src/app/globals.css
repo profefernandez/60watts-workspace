@@ -26,7 +26,7 @@ body {
   overflow: hidden;
   background: var(--ob1);
   color: var(--cr);
-  font-family: "Satoshi", sans-serif;
+  font-family: "Satoshi";
 }
 
 /* ── Scrollbar ── */
