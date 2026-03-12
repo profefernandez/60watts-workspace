@@ -26,7 +26,7 @@ const C = {
 let u=0;const uid=(p="b")=>`${p}-${++u}-${Date.now()}`;
 
 // ── Icons ──
-const Ic=({d,s=20,...p}:{d:React.ReactNode;s?:number;[k:string]:unknown})=><svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...p}>{typeof d==="string"?<path d={d}/>:d}</svg>;
+const Ic=({d,s=20,...p}:Omit<React.SVGProps<SVGSVGElement>,'d'>&{d:React.ReactNode;s?:number})=><svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...p}>{typeof d==="string"?<path d={d}/>:d}</svg>;
 
 const I={
   file:<Ic d={<><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></>}/>,

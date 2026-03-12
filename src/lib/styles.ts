@@ -1,7 +1,8 @@
+import type { CSSProperties } from "react";
 import { C } from "./colors";
 
 // ── Glass panel style helper ──
-export const glass = (extra: React.CSSProperties = {}): React.CSSProperties => ({
+export const glass = (extra: CSSProperties = {}): CSSProperties => ({
   background: C.glass,
   backdropFilter: "blur(24px)",
   WebkitBackdropFilter: "blur(24px)",
@@ -11,7 +12,7 @@ export const glass = (extra: React.CSSProperties = {}): React.CSSProperties => (
 });
 
 // ── Glass button style helper ──
-export const glassBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
+export const glassBtn = (extra: CSSProperties = {}): CSSProperties => ({
   padding: "8px 16px",
   border: `1px solid ${C.glassBrd}`,
   borderRadius: "12px",
