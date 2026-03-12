@@ -47,9 +47,9 @@ const config: Config = {
         },
       },
       fontFamily: {
-        display: ["'Clash Display'", "sans-serif"],
-        body: ["'Satoshi'", "sans-serif"],
-        mono: ["'JetBrains Mono'", "monospace"],
+        display: ["'Clash Display'"],
+        body: ["'Satoshi'"],
+        mono: ["'JetBrains Mono'"],
       },
       fontSize: {
         h1: ["40px", { lineHeight: "1.2", fontWeight: "700" }],
