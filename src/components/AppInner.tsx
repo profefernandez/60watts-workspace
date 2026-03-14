@@ -1,3 +1,4 @@
+"use client";
 /* v6 prototype code - see full version */
 import React, { useState, useRef, useEffect, useCallback } from "react";
 
@@ -64,7 +65,7 @@ const fmtSz=(b:number)=>{if(b<1024)return b+"B";if(b<1048576)return(b/1024).toFi
 
 // ── Glass panel style helper ──
 const glass=(extra:React.CSSProperties={})=>({background:C.glass,backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",border:`1px solid ${C.glassBrd}`,borderRadius:"16px",...extra});
-const glassBtn=(extra:React.CSSProperties={})=>({padding:"8px 16px",border:`1px solid ${C.glassBrd}`,borderRadius:"12px",background:C.glass,backdropFilter:"blur(12px)",color:C.tx2,cursor:"pointer",display:"flex" as const,alignItems:"center" as const,gap:"8px",fontSize:"15px",fontWeight:500,transition:"all .25s cubic-bezier(.4,0,.2,1)",fontFamily:"'Satoshi',sans-serif",...extra});
+const glassBtn=(extra:React.CSSProperties={})=>({padding:"8px 16px",border:`1px solid ${C.glassBrd}`,borderRadius:"12px",background:C.glass,backdropFilter:"blur(12px)",color:C.tx2,cursor:"pointer",display:"flex" as const,alignItems:"center" as const,gap:"8px",fontSize:"15px",fontWeight:500,transition:"all .25s cubic-bezier(.4,0,.2,1)",fontFamily:"'Satoshi'",...extra});
 
 // ═════════════════════════════════════
 // NOTE: This is the v6 prototype — the working UI.
@@ -76,12 +77,12 @@ const glassBtn=(extra:React.CSSProperties={})=>({padding:"8px 16px",border:`1px 
 
 export default function AppInner() {
   return (
-    <div style={{display:"flex",height:"100vh",width:"100vw",background:`radial-gradient(ellipse at 20% 50%, ${C.ob4} 0%, ${C.ob1} 50%, #050608 100%)`,fontFamily:"'Satoshi',system-ui,-apple-system,sans-serif",overflow:"hidden",color:C.tx}}>
+    <div style={{display:"flex",height:"100vh",width:"100vw",background:`radial-gradient(ellipse at 20% 50%, ${C.ob4} 0%, ${C.ob1} 50%, #050608 100%)`,fontFamily:"'Satoshi'",overflow:"hidden",color:C.tx}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"center",width:"100%",flexDirection:"column",gap:"24px"}}>
         <div style={{width:"64px",height:"64px",borderRadius:"16px",background:`linear-gradient(135deg,${C.rg},${C.rg2})`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 24px ${C.rgGlow}`}}>
           {I.bulb}
         </div>
-        <h1 style={{fontFamily:"'Clash Display',sans-serif",fontSize:"40px",fontWeight:700,color:C.cr,letterSpacing:"-0.03em"}}>60 Watts of Clarity</h1>
+        <h1 style={{fontFamily:"'Clash Display'",fontSize:"40px",fontWeight:700,color:C.cr,letterSpacing:"-0.03em"}}>60 Watts of Clarity</h1>
         <p style={{fontSize:"20px",color:C.tx2,maxWidth:"600px",textAlign:"center",lineHeight:1.7}}>Workspace Platform — v6 Prototype</p>
         <p style={{fontSize:"16px",color:C.tx4}}>Full component loading from AppInner.tsx</p>
       </div>
