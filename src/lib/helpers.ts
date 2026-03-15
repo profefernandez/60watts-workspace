@@ -1,20 +1,17 @@
-/**
- * 60 Watts of Clarity — Helper Utilities
- * File categorization, formatting, and ID generation.
- */
+import { I } from "./icons";
 
 // ── Unique ID generator ──
-/** Generate a unique ID. Uses crypto.randomUUID when available for SSR safety. */
-export const uid = (prefix = "b"): string => {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return `${prefix}-${crypto.randomUUID()}`;
-  }
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+export const uid = (prefix = "b"): string =>
+  `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
+
+// ── File icon resolver ──
+export const fileIcon = (mimeType: string) => {
+  if (mimeType.startsWith("image")) return I.img;
+  if (mimeType.startsWith("video")) return I.yt;
+  return I.file;
 };
 
-// ── File categorization ──
-
-/** Map a MIME type to a human-readable category. */
+// ── File category resolver ──
 export const fileCat = (mimeType: string): string => {
   if (mimeType.startsWith("image")) return "Images";
   if (mimeType.startsWith("video")) return "Videos";
@@ -23,7 +20,7 @@ export const fileCat = (mimeType: string): string => {
   return "Documents";
 };
 
-/** Format a byte count to a human-readable size string. */
+// ── Format file size ──
 export const fmtSz = (bytes: number): string => {
   if (bytes < 1024) return bytes + "B";
   if (bytes < 1048576) return (bytes / 1024).toFixed(1) + "KB";

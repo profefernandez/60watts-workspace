@@ -1,15 +1,7 @@
-/**
- * 60 Watts of Clarity — Library Barrel Export
- * Single import point for all shared modules.
- */
+// ── 60 Watts of Clarity — Barrel Export ──
 
 export { C } from "./colors";
-export type { ColorKey } from "./colors";
-
-export { Ic, I, fileIcon } from "./icons";
-
-export { uid, fileCat, fmtSz, sanitize, sanitizeUrl } from "./helpers";
-
+export { I } from "./icons";
 export { glass, glassBtn } from "./styles";
-
-export type { Block, KBFile, AIMessage, BlockType } from "./types";
+export { uid, fileIcon, fileCat, fmtSz, sanitize, sanitizeUrl } from "./helpers";
+export type { Block, KBFile, AIMessage, Tab, PrototypeMode } from "./types";

@@ -1,9 +1,5 @@
-/**
- * 60 Watts of Clarity — Data Model Types
- * Shared interfaces for workspace entities.
- */
+// ── 60 Watts of Clarity — TypeScript Interfaces ──
 
-/** A content block in the Canvas editor. */
 export interface Block {
   id: string;
   type: "heading" | "subheading" | "text" | "image" | "youtube";
@@ -14,7 +10,6 @@ export interface Block {
   videoId?: string;
 }
 
-/** A file stored in the Knowledge Base. */
 export interface KBFile {
   id: string;
   name: string;
@@ -25,7 +20,6 @@ export interface KBFile {
   textContent: string | null;
 }
 
-/** A message in the Profé AI chat. */
 export interface AIMessage {
   role: "user" | "assistant";
   content: string;
@@ -33,5 +27,6 @@ export interface AIMessage {
   imgPr?: string;
 }
 
-/** Supported Canvas block types. */
-export type BlockType = Block["type"];
+export type Tab = "canvas" | "prototype" | "kb" | "research" | "youtube";
+
+export type PrototypeMode = "split" | "code" | "preview";

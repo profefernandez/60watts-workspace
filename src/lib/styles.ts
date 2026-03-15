@@ -1,12 +1,7 @@
-import { C } from "./colors";
 import type { CSSProperties } from "react";
+import { C } from "./colors";
 
-/**
- * 60 Watts of Clarity — Style Helpers
- * Reusable glass-panel style generators for the Spline-inspired aesthetic.
- */
-
-/** Glass panel style — use for cards, sidebars, modals. */
+// ── Glass panel style helper ──
 export const glass = (extra: CSSProperties = {}): CSSProperties => ({
   background: C.glass,
   backdropFilter: "blur(24px)",
@@ -16,7 +11,7 @@ export const glass = (extra: CSSProperties = {}): CSSProperties => ({
   ...extra,
 });
 
-/** Glass button style — use for interactive controls. */
+// ── Glass button style helper ──
 export const glassBtn = (extra: CSSProperties = {}): CSSProperties => ({
   padding: "8px 16px",
   border: `1px solid ${C.glassBrd}`,

@@ -1,17 +1,13 @@
 import React from "react";
 
-/**
- * 60 Watts of Clarity — Icon Library
- * SVG icon components for the Spline-inspired aesthetic.
- */
+// ── 60 Watts of Clarity — Icon Components ──
 
 interface IcProps extends Omit<React.SVGProps<SVGSVGElement>, "d"> {
-  d: string | React.ReactNode;
+  d: React.ReactNode;
   s?: number;
 }
 
-/** Base icon component — renders an SVG with consistent stroke styling. */
-export const Ic: React.FC<IcProps> = ({ d, s = 20, ...p }) => (
+const Ic: React.FC<IcProps> = ({ d, s = 20, ...p }) => (
   <svg
     width={s}
     height={s}
@@ -27,7 +23,6 @@ export const Ic: React.FC<IcProps> = ({ d, s = 20, ...p }) => (
   </svg>
 );
 
-/** Pre-built icon set used across the workspace. */
 export const I = {
   file: (
     <Ic
@@ -254,7 +249,16 @@ export const I = {
       s={16}
     />
   ),
-  min: <Ic d={<line x1="5" y1="12" x2="19" y2="12" />} s={16} />,
+  min: (
+    <Ic
+      d={
+        <>
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </>
+      }
+      s={16}
+    />
+  ),
   max: (
     <Ic
       d={
