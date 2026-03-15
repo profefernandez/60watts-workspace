@@ -27,21 +27,33 @@ export const fmtSz = (bytes: number): string => {
   return (bytes / 1048576).toFixed(1) + "MB";
 };
 
-// ── Sanitize text input ──
-export const sanitize = (input: string): string =>
-  input
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+/**
+ * Sanitize a plain-text string by stripping HTML tags (multi-pass).
+ * WARNING: This is NOT safe for rendering user-generated HTML.
+ * It does not decode HTML entities or handle all XSS vectors.
+ * For rendering untrusted HTML, use DOMPurify or a similar library.
+ */
+export const sanitize = (input: string): string => {
+  let result = input;
+  let previous: string;
+  do {
+    previous = result;
+    result = result.replace(/<[^>]*>/g, "");
+  } while (result !== previous);
+  return result.trim();
+};
 
-// ── Sanitize URL ──
+/**
+ * Validate that a URL is an allowed protocol (http/https only).
+ * Returns the URL if valid, or an empty string if not.
+ */
 export const sanitizeUrl = (url: string): string => {
   try {
     const parsed = new URL(url);
-    if (!["http:", "https:"].includes(parsed.protocol)) return "";
-    return parsed.href;
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.href;
+    }
+    return "";
   } catch {
     return "";
   }

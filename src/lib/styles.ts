@@ -26,6 +26,6 @@ export const glassBtn = (extra: CSSProperties = {}): CSSProperties => ({
   fontSize: "15px",
   fontWeight: 500,
   transition: "all .25s cubic-bezier(.4,0,.2,1)",
-  fontFamily: "'Satoshi'",
+  fontFamily: "Satoshi",
   ...extra,
 });

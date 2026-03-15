@@ -1,6 +1,8 @@
-// ── 60 Watts of Clarity — Color Palette ──
-// Spline-inspired 3D Luxury Tech Aesthetic
-// Obsidian · Rose Gold · Soft Cream
+/**
+ * 60 Watts of Clarity — Color Palette
+ * Spline-inspired 3D Luxury Tech Aesthetic
+ * Obsidian · Rose Gold · Soft Cream
+ */
 
 export const C = {
   // Obsidian
@@ -21,17 +23,17 @@ export const C = {
   cr2: "#F0E8DC",
   cr3: "#E6DCCF",
   crD: "#D4C8B8",
-  // Glass
+  // Accents
+  glow: "#E8A87C22",
   glass: "rgba(255,255,255,0.04)",
   glassB: "rgba(255,255,255,0.08)",
   glassBrd: "rgba(255,255,255,0.06)",
-  glow: "#E8A87C22",
-  // Text
   tx: "#FAF5EF",
   tx2: "#C8BFB4",
   tx3: "#8A8078",
   tx4: "#5C554E",
-  // Accents
   red: "#E85D5D",
   green: "#5DE8A8",
-};
+} as const;
+
+export type ColorKey = keyof typeof C;

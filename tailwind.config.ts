@@ -51,6 +51,19 @@ const config: Config = {
         body: ["'Satoshi'"],
         mono: ["'JetBrains Mono'"],
       },
+      animation: {
+        "orb-drift": "orbDrift 8s ease-in-out infinite",
+        sparkle: "sparkle 3s ease-in-out infinite",
+        "glow-pulse": "glowPulse 2s ease-in-out infinite",
+      },
+      keyframes: {
+        orbDrift: {
+          "0%, 100%": { transform: "translate(0, 0)" },
+          "50%": { transform: "translate(30px, -20px)" },
+        },
+        sparkle: {
+          "0%, 100%": { opacity: "0.6", transform: "translateY(0)" },
+          "50%": { opacity: "1", transform: "translateY(-4px)" },
       fontSize: {
         h1: ["40px", { lineHeight: "1.2", fontWeight: "700" }],
         h2: ["28px", { lineHeight: "1.3", fontWeight: "600" }],

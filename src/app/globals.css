@@ -24,12 +24,14 @@ html,
 body {
   height: 100%;
   overflow: hidden;
-  background: var(--ob1);
-  color: var(--cr);
+  background: #08090c;
+  color: #faf5ef;
   font-family: "Satoshi";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Scrollbar ── */
+/* ── Scrollbar styling ── */
 ::-webkit-scrollbar {
   width: 6px;
 }

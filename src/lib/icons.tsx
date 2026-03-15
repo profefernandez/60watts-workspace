@@ -274,3 +274,10 @@ export const I = {
   ),
   chL: <Ic d={<polyline points="15 18 9 12 15 6" />} s={18} />,
 };
+
+/** Map a MIME type to the appropriate icon element. */
+export const fileIcon = (mimeType: string): React.ReactElement => {
+  if (mimeType.startsWith("image")) return I.img;
+  if (mimeType.startsWith("video")) return I.yt;
+  return I.file;
+};

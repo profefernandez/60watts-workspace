@@ -17,19 +17,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Clash Display — Headings */}
+        {/* Preconnect to font CDNs for faster loading */}
+        <link rel="preconnect" href="https://api.fontshare.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* Fontshare CDN — Clash Display (headings) + Satoshi (body) + JetBrains Mono (code) */}
         <link
-          href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&display=swap"
+          href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&f[]=satoshi@400,500,700&display=swap"
           rel="stylesheet"
         />
-        {/* Satoshi — Body */}
         <link
-          href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap"
-          rel="stylesheet"
-        />
-        {/* JetBrains Mono — Code editor only */}
-        <link
-          href="https://api.fontshare.com/v2/css?f[]=jetbrains-mono@400,500&display=swap"
+          href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap"
           rel="stylesheet"
         />
       </head>

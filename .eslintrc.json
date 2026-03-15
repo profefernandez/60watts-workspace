@@ -4,6 +4,7 @@
     "next/typescript"
   ],
   "rules": {
+    "@next/next/no-page-custom-font": "off"
     "@typescript-eslint/no-unused-vars": "warn"
   }
 }
