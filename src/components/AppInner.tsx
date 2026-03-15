@@ -1,6 +1,4 @@
-"use client";
-/* v6 prototype code - see full version */
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import { C, I } from "@/lib";
 
 /* ═══════════════════════════════════════════════════════════
    60 WATTS OF CLARITY — v6
