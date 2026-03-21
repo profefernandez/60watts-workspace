@@ -8,6 +8,7 @@ import directus from "../lib/directus";
 import type { Workspace } from "../lib/directus";
 import { readItems, createItem, aggregate } from "@directus/sdk";
 import CanvasView from "./CanvasView";
+import KBView from "./KBView";
 
 /* ═══════════════════════════════════════════════════════════
    60 WATTS OF CLARITY — v6
@@ -454,6 +455,9 @@ export default function AppInner() {
           ) : view === "canvas" && activeWs ? (
             /* ── Canvas View ── */
             <CanvasView workspaceId={activeWs.id} />
+          ) : view === "kb" && activeWs ? (
+            /* ── Knowledge Base View ── */
+            <KBView workspaceId={activeWs.id} />
           ) : (
             /* ── Other views: placeholder ── */
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16, height: "100%" }}>
