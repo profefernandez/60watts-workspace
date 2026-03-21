@@ -9,6 +9,11 @@ import type { Workspace } from "../lib/directus";
 import { readItems, createItem, aggregate } from "@directus/sdk";
 import CanvasView from "./CanvasView";
 import KBView from "./KBView";
+import PrototypeView from "./PrototypeView";
+import ProfePanel from "./ProfePanel";
+import ResearchModal from "./ResearchModal";
+import YouTubeModal from "./YouTubeModal";
+import SettingsView from "./SettingsView";
 
 /* ═══════════════════════════════════════════════════════════
    60 WATTS OF CLARITY — v6
@@ -16,20 +21,27 @@ import KBView from "./KBView";
    Obsidian · Rose Gold · Soft Cream · AI: Profé
    ═══════════════════════════════════════════════════════════ */
 
-type ViewTab = "home" | "canvas" | "prototype" | "kb";
+type ViewTab = "home" | "canvas" | "prototype" | "kb" | "settings";
 
-const NAV_ITEMS: { id: ViewTab; label: string; icon: React.ReactNode }[] = [
+const NAV_WORKSPACE: { id: ViewTab; label: string; icon: React.ReactNode }[] = [
   { id: "home", label: "Home", icon: I.bulb },
   { id: "canvas", label: "Canvas", icon: I.board },
   { id: "prototype", label: "Prototype", icon: I.pen },
   { id: "kb", label: "Knowledge Base", icon: I.db },
 ];
 
-const VIEW_LABELS: Record<ViewTab, string> = {
+const NAV_TOOLS: { id: string; label: string; icon: React.ReactNode }[] = [
+  { id: "research", label: "Research", icon: I.search },
+  { id: "youtube", label: "YouTube", icon: I.yt },
+  { id: "settings", label: "Settings", icon: I.ctx },
+];
+
+const VIEW_LABELS: Record<string, string> = {
   home: "Home",
   canvas: "Canvas",
   prototype: "Prototype Studio",
   kb: "Knowledge Base",
+  settings: "Settings",
 };
 
 // ── Create Workspace Modal ──
@@ -72,6 +84,9 @@ export default function AppInner() {
   const [activeWs, setActiveWs] = useState<Workspace | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [fileCounts, setFileCounts] = useState<Record<string, number>>({});
+  const [showResearch, setShowResearch] = useState(false);
+  const [showYouTube, setShowYouTube] = useState(false);
+  const [protoCode, setProtoCode] = useState<string | undefined>();
 
   const fetchWorkspaces = useCallback(async () => {
     try {
@@ -248,13 +263,58 @@ export default function AppInner() {
             Workspace
           </div>
         )}
-        <div style={{ flex: 1, padding: collapsed ? "8px 6px" : "4px 12px" }}>
-          {NAV_ITEMS.map((item) => {
+        <div style={{ flex: 1, padding: collapsed ? "8px 6px" : "4px 12px", overflow: "auto" }}>
+          {NAV_WORKSPACE.map((item) => {
             const active = view === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => setView(item.id)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  width: "100%",
+                  padding: collapsed ? "12px 14px" : "10px 12px",
+                  border: "none",
+                  borderRadius: 10,
+                  background: active ? `${C.rg}14` : "transparent",
+                  borderLeft: active ? `3px solid ${C.rg}` : "3px solid transparent",
+                  color: active ? C.cr : C.tx3,
+                  cursor: "pointer",
+                  fontFamily: "'Satoshi'",
+                  fontSize: 15,
+                  fontWeight: active ? 600 : 400,
+                  transition: "all 0.15s",
+                  marginBottom: 4,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <span style={{ flexShrink: 0, color: active ? C.rg : C.tx3 }}>
+                  {item.icon}
+                </span>
+                {!collapsed && item.label}
+              </button>
+            );
+          })}
+
+          {/* Tools section */}
+          {!collapsed && (
+            <div style={{ padding: "12px 0 4px", fontSize: 11, fontWeight: 600, color: C.tx4, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              Tools
+            </div>
+          )}
+          {NAV_TOOLS.map((item) => {
+            const isView = item.id === "settings";
+            const active = isView && view === "settings";
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  if (item.id === "research") setShowResearch(true);
+                  else if (item.id === "youtube") setShowYouTube(true);
+                  else if (item.id === "settings") setView("settings" as ViewTab);
+                }}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -458,6 +518,12 @@ export default function AppInner() {
           ) : view === "kb" && activeWs ? (
             /* ── Knowledge Base View ── */
             <KBView workspaceId={activeWs.id} />
+          ) : view === "prototype" ? (
+            /* ── Prototype Studio ── */
+            <PrototypeView code={protoCode} onCodeChange={setProtoCode} />
+          ) : view === "settings" ? (
+            /* ── Settings ── */
+            <SettingsView workspaceId={activeWs?.id} />
           ) : (
             /* ── Other views: placeholder ── */
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16, height: "100%" }}>
@@ -474,6 +540,30 @@ export default function AppInner() {
 
       {/* ── Layer 3: Floating Panels ── */}
       {showCreate && <CreateModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
+      <ProfePanel workspaceId={activeWs?.id ?? null} />
+      <ResearchModal
+        open={showResearch}
+        onClose={() => setShowResearch(false)}
+        onAddToCanvas={(content) => {
+          // TODO: create canvas block via Directus
+          console.log("Add to canvas:", content);
+          setShowResearch(false);
+        }}
+        onSendToProfe={(content) => {
+          // TODO: inject into Profé chat
+          console.log("Send to Profé:", content);
+          setShowResearch(false);
+        }}
+      />
+      <YouTubeModal
+        open={showYouTube}
+        onClose={() => setShowYouTube(false)}
+        onEmbed={(videoUrl) => {
+          // TODO: create youtube block in canvas
+          console.log("Embed YouTube:", videoUrl);
+          setShowYouTube(false);
+        }}
+      />
     </div>
   );
 }
