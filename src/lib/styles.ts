@@ -29,3 +29,20 @@ export const glassBtn = (extra: CSSProperties = {}): CSSProperties => ({
   fontFamily: "Satoshi",
   ...extra,
 });
+
+// ── Toolbar button style helper ──
+export const toolbarBtn = (extra: CSSProperties = {}): CSSProperties => ({
+  padding: "6px 12px",
+  border: "none",
+  borderRadius: "6px",
+  background: "transparent",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  gap: "6px",
+  fontSize: "14px",
+  fontWeight: 500,
+  transition: "all 0.15s",
+  fontFamily: "'Satoshi'",
+  ...extra,
+});

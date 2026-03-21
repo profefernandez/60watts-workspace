@@ -1,0 +1,290 @@
+{
+  "version": 1,
+  "directus": "11.0.0",
+  "collections": [
+    {
+      "collection": "workspaces",
+      "meta": {
+        "collection": "workspaces",
+        "icon": "workspaces",
+        "note": "User workspaces containing canvas, KB files, and agent configs",
+        "sort_field": null,
+        "archive_field": null,
+        "archive_value": null,
+        "unarchive_value": null,
+        "singleton": false
+      },
+      "schema": { "name": "workspaces" }
+    },
+    {
+      "collection": "kb_files",
+      "meta": {
+        "collection": "kb_files",
+        "icon": "folder",
+        "note": "Knowledge Base files attached to workspaces",
+        "sort_field": null,
+        "singleton": false
+      },
+      "schema": { "name": "kb_files" }
+    },
+    {
+      "collection": "agent_configs",
+      "meta": {
+        "collection": "agent_configs",
+        "icon": "smart_toy",
+        "note": "AI agent configurations per workspace",
+        "sort_field": null,
+        "singleton": false
+      },
+      "schema": { "name": "agent_configs" }
+    },
+    {
+      "collection": "user_api_keys",
+      "meta": {
+        "collection": "user_api_keys",
+        "icon": "vpn_key",
+        "note": "User-provided API keys for AI providers",
+        "sort_field": null,
+        "singleton": false
+      },
+      "schema": { "name": "user_api_keys" }
+    },
+    {
+      "collection": "canvas_blocks",
+      "meta": {
+        "collection": "canvas_blocks",
+        "icon": "dashboard",
+        "note": "Canvas content blocks per workspace",
+        "sort_field": "sort_order",
+        "singleton": false
+      },
+      "schema": { "name": "canvas_blocks" }
+    }
+  ],
+  "fields": [
+    {
+      "collection": "workspaces",
+      "field": "id",
+      "type": "uuid",
+      "meta": { "interface": "input", "special": ["uuid"], "required": true },
+      "schema": { "is_primary_key": true, "has_auto_increment": false }
+    },
+    {
+      "collection": "workspaces",
+      "field": "name",
+      "type": "string",
+      "meta": { "interface": "input", "required": true, "width": "half" },
+      "schema": { "max_length": 255 }
+    },
+    {
+      "collection": "workspaces",
+      "field": "description",
+      "type": "text",
+      "meta": { "interface": "input-multiline", "width": "full" },
+      "schema": {}
+    },
+    {
+      "collection": "workspaces",
+      "field": "created_at",
+      "type": "timestamp",
+      "meta": { "interface": "datetime", "special": ["date-created"], "readonly": true, "width": "half" },
+      "schema": {}
+    },
+    {
+      "collection": "workspaces",
+      "field": "updated_at",
+      "type": "timestamp",
+      "meta": { "interface": "datetime", "special": ["date-updated"], "readonly": true, "width": "half" },
+      "schema": {}
+    },
+    {
+      "collection": "workspaces",
+      "field": "user_id",
+      "type": "uuid",
+      "meta": { "interface": "select-dropdown-m2o", "special": ["m2o"], "width": "half" },
+      "schema": { "foreign_key_table": "directus_users", "foreign_key_column": "id" }
+    },
+
+    {
+      "collection": "kb_files",
+      "field": "id",
+      "type": "uuid",
+      "meta": { "interface": "input", "special": ["uuid"], "required": true },
+      "schema": { "is_primary_key": true, "has_auto_increment": false }
+    },
+    {
+      "collection": "kb_files",
+      "field": "workspace_id",
+      "type": "uuid",
+      "meta": { "interface": "select-dropdown-m2o", "special": ["m2o"], "required": true },
+      "schema": { "foreign_key_table": "workspaces", "foreign_key_column": "id" }
+    },
+    {
+      "collection": "kb_files",
+      "field": "file",
+      "type": "uuid",
+      "meta": { "interface": "file", "special": ["file"] },
+      "schema": { "foreign_key_table": "directus_files", "foreign_key_column": "id" }
+    },
+    {
+      "collection": "kb_files",
+      "field": "category",
+      "type": "string",
+      "meta": { "interface": "input", "width": "half" },
+      "schema": { "max_length": 100 }
+    },
+    {
+      "collection": "kb_files",
+      "field": "created_at",
+      "type": "timestamp",
+      "meta": { "interface": "datetime", "special": ["date-created"], "readonly": true },
+      "schema": {}
+    },
+
+    {
+      "collection": "agent_configs",
+      "field": "id",
+      "type": "uuid",
+      "meta": { "interface": "input", "special": ["uuid"], "required": true },
+      "schema": { "is_primary_key": true, "has_auto_increment": false }
+    },
+    {
+      "collection": "agent_configs",
+      "field": "workspace_id",
+      "type": "uuid",
+      "meta": { "interface": "select-dropdown-m2o", "special": ["m2o"], "required": true },
+      "schema": { "foreign_key_table": "workspaces", "foreign_key_column": "id" }
+    },
+    {
+      "collection": "agent_configs",
+      "field": "provider",
+      "type": "string",
+      "meta": { "interface": "input", "width": "half" },
+      "schema": { "max_length": 50 }
+    },
+    {
+      "collection": "agent_configs",
+      "field": "agent_id",
+      "type": "string",
+      "meta": { "interface": "input", "width": "half" },
+      "schema": { "max_length": 100 }
+    },
+    {
+      "collection": "agent_configs",
+      "field": "display_name",
+      "type": "string",
+      "meta": { "interface": "input", "width": "half" },
+      "schema": { "max_length": 255 }
+    },
+    {
+      "collection": "agent_configs",
+      "field": "is_active",
+      "type": "boolean",
+      "meta": { "interface": "boolean", "width": "half" },
+      "schema": { "default_value": true }
+    },
+
+    {
+      "collection": "user_api_keys",
+      "field": "id",
+      "type": "uuid",
+      "meta": { "interface": "input", "special": ["uuid"], "required": true },
+      "schema": { "is_primary_key": true, "has_auto_increment": false }
+    },
+    {
+      "collection": "user_api_keys",
+      "field": "user_id",
+      "type": "uuid",
+      "meta": { "interface": "select-dropdown-m2o", "special": ["m2o"], "required": true },
+      "schema": { "foreign_key_table": "directus_users", "foreign_key_column": "id" }
+    },
+    {
+      "collection": "user_api_keys",
+      "field": "provider",
+      "type": "string",
+      "meta": { "interface": "input", "width": "half" },
+      "schema": { "max_length": 50 }
+    },
+    {
+      "collection": "user_api_keys",
+      "field": "api_key",
+      "type": "string",
+      "meta": { "interface": "input", "special": ["hash"], "width": "full", "note": "Stored hashed — not visible after save" },
+      "schema": { "max_length": 500 }
+    },
+
+    {
+      "collection": "canvas_blocks",
+      "field": "id",
+      "type": "uuid",
+      "meta": { "interface": "input", "special": ["uuid"], "required": true },
+      "schema": { "is_primary_key": true, "has_auto_increment": false }
+    },
+    {
+      "collection": "canvas_blocks",
+      "field": "workspace_id",
+      "type": "uuid",
+      "meta": { "interface": "select-dropdown-m2o", "special": ["m2o"], "required": true },
+      "schema": { "foreign_key_table": "workspaces", "foreign_key_column": "id" }
+    },
+    {
+      "collection": "canvas_blocks",
+      "field": "type",
+      "type": "string",
+      "meta": { "interface": "select-dropdown", "width": "half", "options": { "choices": [
+        { "text": "Heading", "value": "heading" },
+        { "text": "Subheading", "value": "subheading" },
+        { "text": "Text", "value": "text" },
+        { "text": "Image", "value": "image" },
+        { "text": "YouTube", "value": "youtube" }
+      ]}},
+      "schema": { "max_length": 50 }
+    },
+    {
+      "collection": "canvas_blocks",
+      "field": "content",
+      "type": "text",
+      "meta": { "interface": "input-multiline", "width": "full" },
+      "schema": {}
+    },
+    {
+      "collection": "canvas_blocks",
+      "field": "sort_order",
+      "type": "integer",
+      "meta": { "interface": "input", "width": "half" },
+      "schema": { "default_value": 0 }
+    }
+  ],
+  "relations": [
+    {
+      "collection": "workspaces",
+      "field": "user_id",
+      "related_collection": "directus_users"
+    },
+    {
+      "collection": "kb_files",
+      "field": "workspace_id",
+      "related_collection": "workspaces"
+    },
+    {
+      "collection": "kb_files",
+      "field": "file",
+      "related_collection": "directus_files"
+    },
+    {
+      "collection": "agent_configs",
+      "field": "workspace_id",
+      "related_collection": "workspaces"
+    },
+    {
+      "collection": "user_api_keys",
+      "field": "user_id",
+      "related_collection": "directus_users"
+    },
+    {
+      "collection": "canvas_blocks",
+      "field": "workspace_id",
+      "related_collection": "workspaces"
+    }
+  ]
+}

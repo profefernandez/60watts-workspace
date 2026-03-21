@@ -273,6 +273,51 @@ export const I = {
     />
   ),
   chL: <Ic d={<polyline points="15 18 9 12 15 6" />} s={18} />,
+  chR: <Ic d={<polyline points="9 18 15 12 9 6" />} s={18} />,
+  moon: <Ic d={<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />} s={18} />,
+  play: (
+    <Ic d={<polygon points="5 3 19 12 5 21 5 3" />} s={16} />
+  ),
+  move: (
+    <Ic
+      d={
+        <>
+          <polyline points="5 9 2 12 5 15" />
+          <polyline points="9 5 12 2 15 5" />
+          <polyline points="15 19 12 22 9 19" />
+          <polyline points="19 9 22 12 19 15" />
+          <line x1="2" y1="12" x2="22" y2="12" />
+          <line x1="12" y1="2" x2="12" y2="22" />
+        </>
+      }
+      s={16}
+    />
+  ),
+  vid: (
+    <Ic
+      d={
+        <>
+          <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" />
+          <line x1="7" y1="2" x2="7" y2="22" />
+          <line x1="17" y1="2" x2="17" y2="22" />
+          <line x1="2" y1="12" x2="22" y2="12" />
+        </>
+      }
+      s={16}
+    />
+  ),
+  music: (
+    <Ic
+      d={
+        <>
+          <path d="M9 18V5l12-2v13" />
+          <circle cx="6" cy="18" r="3" />
+          <circle cx="18" cy="16" r="3" />
+        </>
+      }
+      s={16}
+    />
+  ),
 };
 
 /** Map a MIME type to the appropriate icon element. */

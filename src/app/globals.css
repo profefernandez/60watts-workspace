@@ -7,6 +7,56 @@
    Spline-inspired 3D Luxury Tech Aesthetic
    ═══════════════════════════════════════════════════════════ */
 
+/* ── Self-hosted Fonts ── */
+
+/* Clash Display — Headings (600, 700) */
+@font-face {
+  font-family: 'Clash Display';
+  src: url('/fonts/ClashDisplay-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Clash Display';
+  src: url('/fonts/ClashDisplay-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+  font-style: normal;
+}
+
+/* Satoshi — Body / Nav / UI (400, 500, 700) */
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/Satoshi-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/Satoshi-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/Satoshi-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+  font-style: normal;
+}
+
+/* JetBrains Mono — Code editor only (400) */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
+}
+
 :root {
   --ob1: #08090C;
   --ob2: #0E1015;
@@ -24,14 +74,17 @@ html,
 body {
   height: 100%;
   overflow: hidden;
-  background: #08090c;
-  color: #faf5ef;
-  font-family: "Satoshi";
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  background: var(--ob1);
+  color: var(--cr);
+  font-family: 'Satoshi';
 }
 
-/* ── Scrollbar styling ── */
+/* Heading font utility class */
+.font-heading {
+  font-family: 'Clash Display';
+}
+
+/* ── Scrollbar ── */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -107,4 +160,19 @@ body {
 
 .animate-spin {
   animation: spin 1s linear infinite;
+}
+
+/* ── Spin (alias for component use) ── */
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* ── Fade in ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fadeIn {
+  animation: fadeIn 0.2s ease;
 }

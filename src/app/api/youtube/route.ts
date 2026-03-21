@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// ── Research Panel API Route ──
-// Proxies research queries to the AI backend with web search instructions
+// ── YouTube Search API Route ──
+// Proxies YouTube search queries to the AI backend
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
         messages: [
           {
             role: "user",
-            content: `Research the following topic: ${query}\n\nProvide 4-6 key findings. Format your response as a JSON array: [{"title":"Finding Title","summary":"2-3 sentence summary","source":"source name or url"}]\n\nRespond with ONLY the JSON array.`,
+            content: `Search YouTube for videos about: "${query}"\n\nReturn exactly 6 results as a JSON array: [{"title":"Video Title","channelName":"Channel","videoId":"the_youtube_video_id","description":"brief description"}]\n\nUse real, valid YouTube video IDs. Respond with ONLY the JSON array.`,
           },
         ],
         tools: [{ type: "web_search_20250305", name: "web_search" }],
@@ -46,9 +46,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!response.ok) {
-      return NextResponse.json(
-        { results: [{ title: "Error", summary: `Search returned status ${response.status}. Try again.`, source: "" }] }
-      );
+      return NextResponse.json({ results: [] });
     }
 
     const data = await response.json();
@@ -57,33 +55,24 @@ export async function POST(request: NextRequest) {
       if (block.type === "text" && block.text) txt += block.text;
     }
 
-    if (!txt.trim()) {
-      return NextResponse.json({
-        results: [{ title: "No Results", summary: "Search did not return results. Try a different query.", source: "" }],
-      });
-    }
-
     try {
-      const cleaned = txt.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      const cleaned = txt
+        .replace(/```json\s*/g, "")
+        .replace(/```\s*/g, "")
+        .trim();
       const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         const results = Array.isArray(parsed)
-          ? parsed.map((item: Record<string, unknown>) => ({
-              title: String(item.title || "Finding"),
-              summary: String(item.summary || item.description || ""),
-              source: String(item.source || item.url || ""),
-            }))
-          : [{ title: "Results", summary: cleaned, source: "" }];
+          ? parsed.filter(
+              (v: Record<string, unknown>) => v.videoId && v.title
+            )
+          : [];
         return NextResponse.json({ results });
       }
-      return NextResponse.json({
-        results: [{ title: "Research Results", summary: cleaned.slice(0, 1500), source: "Web Search" }],
-      });
+      return NextResponse.json({ results: [] });
     } catch {
-      return NextResponse.json({
-        results: [{ title: "Research Results", summary: txt.slice(0, 1500), source: "Web Search" }],
-      });
+      return NextResponse.json({ results: [] });
     }
   } catch {
     return NextResponse.json(
