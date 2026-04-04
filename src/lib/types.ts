@@ -2,7 +2,7 @@
 
 export interface Block {
   id: string;
-  type: "heading" | "text" | "image" | "youtube";
+  type: "heading" | "text" | "image" | "youtube" | "search_card";
   content: string;
   imageUrl?: string;
   prompt?: string;
@@ -13,6 +13,17 @@ export interface Block {
   width?: number | null;
   height?: number | null;
   format?: string | null;
+  searchData?: SearchCardData;
+}
+
+export interface SearchCardData {
+  id: string;
+  title: string;
+  snippet: string;
+  source_url: string;
+  source_domain: string;
+  relevance?: string;
+  suggested_location?: string;
 }
 
 export interface KBFile {
