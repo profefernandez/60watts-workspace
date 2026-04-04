@@ -3,9 +3,8 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
 import { C } from "../lib/colors";
 import { glass } from "../lib/styles";
 import { I } from "../lib/icons";
-import directus from "../lib/directus";
-import { readItems } from "@directus/sdk";
 import type { CanvasBlock, KBFile } from "../lib/directus";
+import { fetchCanvasContext, fetchKBContext } from "../lib/store";
 
 // ── Types ──
 
@@ -111,34 +110,23 @@ export default function ProfePanel({ workspaceId }: Props) {
     const ctx: { canvas_blocks?: string; kb_files?: string } = {};
     if (!workspaceId) return ctx;
     try {
-      const blocks = (await directus.request(
-        readItems("canvas_blocks", {
-          filter: { workspace_id: { _eq: workspaceId as string } },
-          sort: ["sort_order"],
-          limit: 20,
-        })
-      )) as CanvasBlock[];
+      const blocks = await fetchCanvasContext(workspaceId);
       if (blocks.length > 0) {
         ctx.canvas_blocks = blocks
           .map((b) => `[${b.type}] ${(b.content || "").slice(0, 100)}`)
           .join("; ");
       }
     } catch {
-      /* Directus may not be connected */
+      /* Store unavailable */
     }
 
     try {
-      const files = (await directus.request(
-        readItems("kb_files", {
-          filter: { workspace_id: { _eq: workspaceId as string } },
-          limit: 20,
-        })
-      )) as KBFile[];
+      const files = await fetchKBContext(workspaceId);
       if (files.length > 0) {
         ctx.kb_files = files.map((f) => f.file).join(", ");
       }
     } catch {
-      /* Directus may not be connected */
+      /* Store unavailable */
     }
 
     return ctx;
@@ -186,17 +174,32 @@ export default function ProfePanel({ workspaceId }: Props) {
         finalMessage = `${text}\n\nPlease wrap any HTML/CSS code in CODE_START and CODE_END markers.`;
       }
 
-      const res = await fetch(`${DIRECTUS_URL}/workspace/ai/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          message: finalMessage,
-          history,
-          context,
-          provider: "anthropic",
-        }),
-      });
+      let res: Response;
+      let usingFallback = false;
+      try {
+        res = await fetch(`${DIRECTUS_URL}/workspace/ai/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            message: finalMessage,
+            history,
+            context,
+            provider: "anthropic",
+          }),
+        });
+        if (!res.ok) throw new Error("Directus unavailable");
+      } catch {
+        usingFallback = true;
+        res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: [...history, { role: "user", content: finalMessage }],
+            context,
+          }),
+        });
+      }
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({ error: "Request failed" }));
@@ -207,7 +210,7 @@ export default function ProfePanel({ workspaceId }: Props) {
       const assistantMsg: ChatMessage = {
         id: uid(),
         role: "assistant",
-        content: data.response || "I didn't get a response. Please try again.",
+        content: (usingFallback ? data.content : data.response) || "I didn't get a response. Please try again.",
       };
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err) {
