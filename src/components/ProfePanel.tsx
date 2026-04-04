@@ -27,9 +27,6 @@ function uid(): string {
   return `msg_${Date.now()}_${++_uid}`;
 }
 
-const DIRECTUS_URL =
-  process.env.NEXT_PUBLIC_DIRECTUS_URL || "http://localhost:8055";
-
 // Intent detection
 const IMAGE_RE =
   /\b(image|picture|draw|sketch|show me|generate image)\b/i;
@@ -174,32 +171,14 @@ export default function ProfePanel({ workspaceId }: Props) {
         finalMessage = `${text}\n\nPlease wrap any HTML/CSS code in CODE_START and CODE_END markers.`;
       }
 
-      let res: Response;
-      let usingFallback = false;
-      try {
-        res = await fetch(`${DIRECTUS_URL}/workspace/ai/chat`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            message: finalMessage,
-            history,
-            context,
-            provider: "anthropic",
-          }),
-        });
-        if (!res.ok) throw new Error("Directus unavailable");
-      } catch {
-        usingFallback = true;
-        res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: [...history, { role: "user", content: finalMessage }],
-            context,
-          }),
-        });
-      }
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [...history, { role: "user", content: finalMessage }],
+          context,
+        }),
+      });
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({ error: "Request failed" }));
@@ -210,7 +189,7 @@ export default function ProfePanel({ workspaceId }: Props) {
       const assistantMsg: ChatMessage = {
         id: uid(),
         role: "assistant",
-        content: (usingFallback ? data.content : data.response) || "I didn't get a response. Please try again.",
+        content: data.content || "I didn't get a response. Please try again.",
       };
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err) {

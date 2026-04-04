@@ -102,7 +102,7 @@ export function getHealthStatus(provider: string): HealthStatus {
 export function resetHealth(): void { healthMap.clear(); }
 
 export const FALLBACK_CHAINS: Record<string, string[]> = {
-  chat: ["anthropic", "launchlemonade"],
+  chat: ["launchlemonade", "anthropic"],
   research: ["perplexity", "anthropic"],
   youtube: ["youtube", "anthropic"],
 };

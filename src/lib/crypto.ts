@@ -85,7 +85,8 @@ export async function getDecryptedKey(
     const key = decrypt(record.encrypted_key);
     const extra = record.extra_encrypted ? decrypt(record.extra_encrypted) : undefined;
     return { key, extra };
-  } catch {
+  } catch (err) {
+    console.error("[getDecryptedKey] Error:", err);
     return null;
   }
 }
