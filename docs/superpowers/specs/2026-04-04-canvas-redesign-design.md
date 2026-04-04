@@ -36,6 +36,10 @@ The canvas area is a single scrollable region. Text blocks flow vertically using
 | Click empty canvas | Text block auto-created at click position, cursor ready |
 | Click between existing blocks | New text block inserted at that gap |
 | Press Enter at end of block | New text block created below, cursor moves there |
+| Press Enter in middle of block | Splits block at cursor — text after cursor moves to new block below |
+| Shift+Enter | Inserts a soft line break (`<br>`) within the current block |
+| Enter on a heading block | New block below is always `text` type (not another heading) |
+| Backspace at start of empty block | Deletes the empty block, cursor moves to end of block above |
 | Select text | Floating toolbar auto-opens near selection |
 | Click `Aa` pill | Toolbar opens, draggable to any position |
 | H1/H2 in toolbar | Converts current block to heading/subheading |
@@ -109,7 +113,7 @@ Images and YouTube embeds are absolutely-positioned elements on a layer above th
 
 **Resize:** Corner handle (bottom-right). Aspect ratio locked by default. Hold Shift to unlock and stretch freely.
 
-**Position storage:** Stored as percentages of canvas dimensions so layout adapts to different screen sizes.
+**Position storage:** `pos_x` is stored as a percentage of the canvas container width (0–100). `pos_y` is stored as an absolute pixel offset from the top of the scrollable content area (not a percentage of height, since canvas height grows with content). On window resize, `pos_x` reflows horizontally but `pos_y` stays anchored to the same vertical document position.
 
 **Selection state:** Clicking a media element shows a subtle border highlight and the resize handle. Clicking elsewhere deselects.
 
@@ -122,6 +126,7 @@ The Knowledge Base gains explicit image library support:
 - Images uploaded via the Canvas gallery modal are saved as KB files with category `"Images"`
 - The Recent tab in the gallery pulls from KB files filtered by Images category
 - Images are shared across workspaces within the KB
+- A new store function `fetchAllKBImages()` queries KB files with category `"Images"` across all workspaces (in offline mode, iterates localStorage keys matching `60w_kb_files_*`)
 - Existing KB file upload/delete/category flows remain unchanged
 
 ## Data Model
@@ -133,13 +138,13 @@ interface CanvasBlock {
   id: string;
   workspace_id: string;
   type: string;          // "text" | "heading" | "image" | "youtube"
-  content: string;       // text content, image URL/KB file ID, or YouTube URL
+  content: string;       // sanitized HTML for text/heading, or media reference (see below)
   sort_order: number;    // vertical order for text blocks
   // New fields (nullable — only used by image/youtube)
   pos_x: number | null;  // percentage of canvas width (0-100)
-  pos_y: number | null;  // percentage of canvas height (0-100)
+  pos_y: number | null;  // absolute pixel offset from top of scroll content
   width: number | null;  // percentage of canvas width
-  height: number | null; // percentage of canvas height
+  height: number | null; // percentage of canvas width (derived from aspect ratio)
   format: string | null; // heading level ("h1"/"h2") or future formatting
 }
 ```
@@ -150,10 +155,20 @@ interface CanvasBlock {
 |------------|---------|---------|--------------|--------|
 | text | HTML text | null (flows) | null | null |
 | heading | Heading text | null (flows) | null | "h1" or "h2" |
-| image | Image URL or KB file ID | x, y percentage | size percentage | null |
-| youtube | YouTube URL | x, y percentage | size percentage | null |
+| image | Image URL or KB file ID | x% of width, y px offset | width/height % | null |
+| youtube | YouTube URL | x% of width, y px offset | width/height % | null |
 
 The `subheading` block type is removed — headings are unified under `heading` type with `format` distinguishing H1 vs H2.
+
+**Migration:** Existing `subheading` blocks are converted on read: if `type === "subheading"`, treat as `type: "heading"` with `format: "h2"`. No write-time migration script needed — blocks are updated lazily on next save.
+
+**Content format for text/heading blocks:** The `content` field stores DOMPurify-sanitized HTML (not plain text). Allowed tags: `<b>`, `<i>`, `<u>`, `<s>`, `<br>`, `<strong>`, `<em>`. All other tags and attributes are stripped. This is a change from the current implementation which uses `textContent` (plain text).
+
+**Content format for image blocks:** The `content` field uses a prefix convention:
+- URLs start with `http` — rendered directly as `<img src="...">`
+- KB file IDs (anything else) — rendered as `<img src="${directusUrl}/assets/${content}">` when online, or looked up from localStorage when offline
+
+**Content format for youtube blocks:** The `content` field stores the YouTube URL. The video ID is extracted at render time using the existing `extractYouTubeId()` helper.
 
 ## Dependencies
 
@@ -164,9 +179,11 @@ The `subheading` block type is removed — headings are unified under `heading` 
 
 - `src/components/CanvasView.tsx` — complete rewrite (current: ~540 lines)
 - `src/lib/directus.ts` — update `CanvasBlock` interface with new fields
-- `src/lib/store.ts` — update localStorage fallback for new fields
+- `src/lib/types.ts` — update `Block` interface to match new schema
+- `src/lib/store.ts` — update localStorage fallback for new fields; add `fetchAllKBImages()` function
 - `src/components/KBView.tsx` — minor: ensure Images category filter works for gallery integration
 - `src/app/globals.css` — add canvas-specific styles (floating toolbar, media layer, gallery modal)
+- `directus-schema.json` — add `pos_x`, `pos_y`, `width`, `height`, `format` columns to `canvas_blocks` collection (all nullable floats/strings)
 
 ## Design System Compliance
 
