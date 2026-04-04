@@ -53,3 +53,39 @@ export function extractHint(value: string): string {
   if (value.length <= 4) return "•".repeat(value.length);
   return "•••••" + value.slice(-4);
 }
+
+// ── Key Retrieval ──
+
+const DIRECTUS_URL = process.env.NEXT_PUBLIC_DIRECTUS_URL || "http://localhost:8055";
+
+export async function getDecryptedKey(
+  provider: string
+): Promise<{ key: string; extra?: string } | null> {
+  try {
+    const loginRes = await fetch(`${DIRECTUS_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: process.env.DIRECTUS_ADMIN_EMAIL || "jason@60watts.com",
+        password: process.env.DIRECTUS_ADMIN_PASSWORD || "changeme",
+      }),
+    });
+    const loginData = await loginRes.json();
+    const token = loginData.data.access_token;
+    const userId = process.env.DEFAULT_USER_ID || "00000000-0000-0000-0000-000000000001";
+
+    const res = await fetch(
+      `${DIRECTUS_URL}/items/user_api_keys?filter[user_id][_eq]=${userId}&filter[provider][_eq]=${provider}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const data = await res.json();
+    if (!data.data || data.data.length === 0) return null;
+
+    const record = data.data[0];
+    const key = decrypt(record.encrypted_key);
+    const extra = record.extra_encrypted ? decrypt(record.extra_encrypted) : undefined;
+    return { key, extra };
+  } catch {
+    return null;
+  }
+}
