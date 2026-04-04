@@ -4,559 +4,266 @@ import React, { useState, useEffect, useCallback } from "react";
 import { C } from "../lib/colors";
 import { glass } from "../lib/styles";
 
-// ── Types ──
-
-interface ProviderStatus {
-  anthropic: boolean;
-  launchlemonade: boolean;
-  perplexity: boolean;
-  youtube: boolean;
-  pubmed: boolean;
+interface ProviderStatusInfo {
+  connected: boolean;
+  hint: string | null;
+  extra_hint?: string | null;
+  health: "healthy" | "degraded" | "down";
+  health_message: string | null;
 }
 
-type ProviderKey = keyof ProviderStatus;
+type ProviderKey = "anthropic" | "launchlemonade" | "perplexity" | "youtube" | "pubmed";
 
 interface ProviderConfig {
   key: ProviderKey;
   name: string;
   description: string;
-  fields: FieldConfig[];
+  fields: { name: string; label: string; type: "password"; placeholder: string; bodyKey: string }[];
 }
-
-interface FieldConfig {
-  name: string;
-  label: string;
-  type: "password" | "text";
-  placeholder: string;
-  bodyKey: string;
-}
-
-// ── Provider definitions ──
 
 const PROVIDERS: ProviderConfig[] = [
   {
-    key: "launchlemonade",
-    name: "LaunchLemonade",
-    description:
-      "AI assistant platform. Requires an API key and Agent ID to connect your custom assistant.",
+    key: "launchlemonade", name: "LaunchLemonade",
+    description: "AI assistant platform. Requires an API key and Agent ID to connect your custom assistant.",
     fields: [
-      {
-        name: "api_key",
-        label: "API Key",
-        type: "password",
-        placeholder: "Paste your API key",
-        bodyKey: "api_key",
-      },
-      {
-        name: "agent_id",
-        label: "Agent ID",
-        type: "text",
-        placeholder: "Agent ID (e.g., agent_abc123)",
-        bodyKey: "agent_id",
-      },
+      { name: "api_key", label: "API Key", type: "password", placeholder: "Paste your API key", bodyKey: "api_key" },
+      { name: "agent_id", label: "Agent ID", type: "password", placeholder: "Agent ID (e.g., agent_abc123)", bodyKey: "agent_id" },
     ],
   },
   {
-    key: "anthropic",
-    name: "Anthropic",
-    description:
-      "Powers Profé AI chat and research. Requires a Claude API key from console.anthropic.com.",
-    fields: [
-      {
-        name: "api_key",
-        label: "API Key",
-        type: "password",
-        placeholder: "Paste your Anthropic API key",
-        bodyKey: "api_key",
-      },
-    ],
+    key: "anthropic", name: "Anthropic",
+    description: "Powers Profé AI chat and research. Requires a Claude API key from console.anthropic.com.",
+    fields: [{ name: "api_key", label: "API Key", type: "password", placeholder: "Paste your Anthropic API key", bodyKey: "api_key" }],
   },
   {
-    key: "perplexity",
-    name: "Perplexity",
-    description:
-      "Web-connected AI search. Requires an API key from perplexity.ai.",
-    fields: [
-      {
-        name: "api_key",
-        label: "API Key",
-        type: "password",
-        placeholder: "Paste your Perplexity API key",
-        bodyKey: "api_key",
-      },
-    ],
+    key: "perplexity", name: "Perplexity",
+    description: "Web-connected AI search. Requires an API key from perplexity.ai.",
+    fields: [{ name: "api_key", label: "API Key", type: "password", placeholder: "Paste your Perplexity API key", bodyKey: "api_key" }],
   },
   {
-    key: "youtube",
-    name: "YouTube Data API",
-    description:
-      "Search and embed YouTube videos. Requires a Google Cloud API key with YouTube Data API v3 enabled.",
-    fields: [
-      {
-        name: "api_key",
-        label: "API Key",
-        type: "password",
-        placeholder: "Paste your YouTube Data API key",
-        bodyKey: "api_key",
-      },
-    ],
+    key: "youtube", name: "YouTube Data API",
+    description: "Search and embed YouTube videos. Requires a Google Cloud API key with YouTube Data API v3 enabled.",
+    fields: [{ name: "api_key", label: "API Key", type: "password", placeholder: "Paste your YouTube Data API key", bodyKey: "api_key" }],
   },
   {
-    key: "pubmed",
-    name: "PubMed / Custom Research",
-    description:
-      "PubMed is free — no API key required for basic searches. NCBI registered users get higher rate limits.",
-    fields: [
-      {
-        name: "api_key",
-        label: "API Key (optional)",
-        type: "password",
-        placeholder: "NCBI API key for higher rate limits",
-        bodyKey: "api_key",
-      },
-      {
-        name: "base_url",
-        label: "Custom API Base URL (optional)",
-        type: "text",
-        placeholder: "https://custom-research-api.example.com",
-        bodyKey: "base_url",
-      },
-    ],
+    key: "pubmed", name: "PubMed / Custom Research",
+    description: "PubMed is free — no API key required for basic searches. NCBI registered users get higher rate limits.",
+    fields: [{ name: "api_key", label: "API Key (optional)", type: "password", placeholder: "NCBI API key for higher rate limits", bodyKey: "api_key" }],
   },
 ];
 
-const DIRECTUS_URL =
-  process.env.NEXT_PUBLIC_DIRECTUS_URL || "http://localhost:8055";
-
-// ── Component ──
-
-interface SettingsViewProps {
-  workspaceId?: string;
+function healthColor(health: string): string {
+  if (health === "healthy") return C.green;
+  if (health === "degraded") return "#F5A623";
+  return C.red;
 }
 
+function healthLabel(info: ProviderStatusInfo): { text: string; color: string } {
+  if (!info.connected) return { text: "Not configured", color: C.tx4 };
+  if (info.health === "healthy") return { text: "Connected", color: C.green };
+  if (info.health === "degraded") return { text: "Slow responses", color: "#F5A623" };
+  return { text: info.health_message || "Unreachable", color: C.red };
+}
+
+interface SettingsViewProps { workspaceId?: string; }
+
 export default function SettingsView({ workspaceId }: SettingsViewProps) {
-  const [statuses, setStatuses] = useState<ProviderStatus>({
-    anthropic: false,
-    launchlemonade: false,
-    perplexity: false,
-    youtube: false,
-    pubmed: false,
+  const [statuses, setStatuses] = useState<Record<ProviderKey, ProviderStatusInfo>>({
+    anthropic: { connected: false, hint: null, health: "healthy", health_message: null },
+    launchlemonade: { connected: false, hint: null, health: "healthy", health_message: null },
+    perplexity: { connected: false, hint: null, health: "healthy", health_message: null },
+    youtube: { connected: false, hint: null, health: "healthy", health_message: null },
+    pubmed: { connected: false, hint: null, health: "healthy", health_message: null },
   });
   const [editing, setEditing] = useState<Record<ProviderKey, boolean>>({
-    anthropic: false,
-    launchlemonade: false,
-    perplexity: false,
-    youtube: false,
-    pubmed: false,
+    anthropic: false, launchlemonade: false, perplexity: false, youtube: false, pubmed: false,
   });
-  const [fieldValues, setFieldValues] = useState<
-    Record<string, string>
-  >({});
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<ProviderKey | null>(null);
-  const [message, setMessage] = useState<{
-    provider: ProviderKey;
-    text: string;
-    isError: boolean;
-  } | null>(null);
+  const [message, setMessage] = useState<{ provider: ProviderKey; text: string; isError: boolean } | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
 
-  // Suppress unused var warning — workspaceId reserved for future workspace-level settings
   void workspaceId;
 
-  // ── Fetch provider statuses ──
   const fetchStatus = useCallback(async () => {
     try {
       setStatusLoading(true);
-      const res = await fetch(`${DIRECTUS_URL}/workspace/settings/status`, {
-        credentials: "include",
-      });
+      const res = await fetch("/api/settings/status", { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setStatuses(data.providers);
       }
-    } catch {
-      // Silently fail — statuses will show as unconfigured
-    } finally {
-      setStatusLoading(false);
-    }
+    } catch { /* silently fail */ } finally { setStatusLoading(false); }
   }, []);
 
-  useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
+  useEffect(() => { fetchStatus(); }, [fetchStatus]);
+  useEffect(() => { const i = setInterval(fetchStatus, 30_000); return () => clearInterval(i); }, [fetchStatus]);
+  useEffect(() => { if (!message) return; const t = setTimeout(() => setMessage(null), 4000); return () => clearTimeout(t); }, [message]);
 
-  // ── Clear message after delay ──
-  useEffect(() => {
-    if (!message) return;
-    const t = setTimeout(() => setMessage(null), 4000);
-    return () => clearTimeout(t);
-  }, [message]);
-
-  // ── Handle field change ──
   const handleFieldChange = (provider: ProviderKey, field: string, value: string) => {
     setFieldValues((prev) => ({ ...prev, [`${provider}_${field}`]: value }));
   };
 
-  // ── Handle save ──
   const handleSave = async (provider: ProviderConfig) => {
     const apiKey = fieldValues[`${provider.key}_api_key`];
     if (!apiKey && provider.key !== "pubmed") {
-      setMessage({ provider: provider.key, text: "API key is required.", isError: true });
-      return;
+      setMessage({ provider: provider.key, text: "API key is required.", isError: true }); return;
     }
-
     setSaving(provider.key);
-
     const body: Record<string, string> = { provider: provider.key };
     for (const field of provider.fields) {
       const val = fieldValues[`${provider.key}_${field.name}`];
-      if (val) {
-        body[field.bodyKey] = val;
-      }
+      if (val) body[field.bodyKey] = val;
     }
-
-    // For pubmed without an API key, skip
-    if (!body.api_key) {
-      setSaving(null);
-      setMessage({ provider: provider.key, text: "No key to save.", isError: true });
-      return;
-    }
+    if (!body.api_key) { setSaving(null); setMessage({ provider: provider.key, text: "No key to save.", isError: true }); return; }
 
     try {
-      const res = await fetch(`${DIRECTUS_URL}/workspace/settings/api-key`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+      const res = await fetch("/api/settings/keys", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
       });
-
       if (res.ok) {
-        // Clear field values after successful save
-        const clearedFields: Record<string, string> = {};
-        for (const field of provider.fields) {
-          clearedFields[`${provider.key}_${field.name}`] = "";
-        }
-        setFieldValues((prev) => ({ ...prev, ...clearedFields }));
-
-        setStatuses((prev) => ({ ...prev, [provider.key]: true }));
+        const data = await res.json();
+        const cleared: Record<string, string> = {};
+        for (const field of provider.fields) cleared[`${provider.key}_${field.name}`] = "";
+        setFieldValues((prev) => ({ ...prev, ...cleared }));
+        setStatuses((prev) => ({ ...prev, [provider.key]: { connected: true, hint: data.key_hint, extra_hint: data.extra_hint, health: "healthy", health_message: null } }));
         setEditing((prev) => ({ ...prev, [provider.key]: false }));
         setMessage({ provider: provider.key, text: "Connected successfully.", isError: false });
       } else {
         const err = await res.json().catch(() => ({ error: "Save failed." }));
         setMessage({ provider: provider.key, text: err.error || "Save failed.", isError: true });
       }
-    } catch {
-      setMessage({ provider: provider.key, text: "Network error. Please try again.", isError: true });
-    } finally {
-      setSaving(null);
-    }
+    } catch { setMessage({ provider: provider.key, text: "Network error. Please try again.", isError: true }); }
+    finally { setSaving(null); }
   };
 
-  // ── Handle "Change Key" ──
-  const handleChangeKey = (providerKey: ProviderKey) => {
-    setEditing((prev) => ({ ...prev, [providerKey]: true }));
+  const handleDisconnect = async (providerKey: ProviderKey) => {
+    try {
+      const res = await fetch("/api/settings/keys", {
+        method: "DELETE", credentials: "include",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider: providerKey }),
+      });
+      if (res.ok) {
+        setStatuses((prev) => ({ ...prev, [providerKey]: { connected: false, hint: null, health: "healthy", health_message: null } }));
+        setEditing((prev) => ({ ...prev, [providerKey]: false }));
+        setMessage({ provider: providerKey, text: "Disconnected.", isError: false });
+      }
+    } catch { setMessage({ provider: providerKey, text: "Failed to disconnect.", isError: true }); }
   };
 
-  const isConnected = (providerKey: ProviderKey) => statuses[providerKey];
-  const showFields = (providerKey: ProviderKey) =>
-    !isConnected(providerKey) || editing[providerKey];
+  const showFields = (pk: ProviderKey) => !statuses[pk]?.connected || editing[pk];
 
   return (
-    <div
-      style={{
-        padding: "32px",
-        maxWidth: 720,
-        margin: "0 auto",
-        fontFamily: "'Satoshi'",
-        color: C.tx,
-      }}
-    >
-      {/* Header */}
-      <h1
-        style={{
-          fontFamily: "'Clash Display'",
-          fontSize: 28,
-          fontWeight: 600,
-          color: C.cr,
-          marginBottom: 8,
-        }}
-      >
-        Settings
-      </h1>
-      <p
-        style={{
-          fontSize: 16,
-          color: C.tx3,
-          marginBottom: 32,
-          fontFamily: "'Satoshi'",
-        }}
-      >
-        Manage your API keys and provider connections. Keys are stored securely
-        and never displayed after saving.
+    <div style={{ padding: "32px", maxWidth: 720, margin: "0 auto", fontFamily: "'Satoshi'", color: C.tx }}>
+      <h1 style={{ fontFamily: "'Clash Display'", fontSize: 28, fontWeight: 600, color: C.cr, marginBottom: 8 }}>Settings</h1>
+      <p style={{ fontSize: 16, color: C.tx3, marginBottom: 32, fontFamily: "'Satoshi'" }}>
+        Manage your API keys and provider connections. Keys are encrypted and never displayed after saving.
       </p>
 
-      {/* Loading state */}
       {statusLoading && (
-        <div
-          style={{
-            textAlign: "center",
-            padding: 40,
-            color: C.tx3,
-            fontSize: 16,
-            fontFamily: "'Satoshi'",
-          }}
-        >
-          Loading provider status...
-        </div>
+        <div style={{ textAlign: "center", padding: 40, color: C.tx3, fontSize: 16, fontFamily: "'Satoshi'" }}>Loading provider status...</div>
       )}
 
-      {/* Provider cards */}
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         {PROVIDERS.map((provider) => {
-          const connected = isConnected(provider.key);
+          const info = statuses[provider.key];
           const showForm = showFields(provider.key);
-          const providerMessage =
-            message && message.provider === provider.key ? message : null;
+          const providerMessage = message && message.provider === provider.key ? message : null;
           const isSaving = saving === provider.key;
+          const label = healthLabel(info);
 
           return (
-            <div
-              key={provider.key}
-              style={{
-                ...glass({ padding: "24px" }),
-              }}
-            >
-              {/* Provider header row */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: showForm ? 20 : 0,
-                }}
-              >
+            <div key={provider.key} style={{ ...glass({ padding: "24px" }) }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: showForm ? 20 : 0 }}>
                 <div>
-                  <h2
-                    style={{
-                      fontFamily: "'Clash Display'",
-                      fontSize: 20,
-                      fontWeight: 600,
-                      color: C.cr,
-                      margin: 0,
-                      marginBottom: 4,
-                    }}
-                  >
-                    {provider.name}
-                  </h2>
-                  <p
-                    style={{
-                      fontSize: 14,
-                      color: C.tx3,
-                      margin: 0,
-                      fontFamily: "'Satoshi'",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {provider.description}
-                  </p>
+                  <h2 style={{ fontFamily: "'Clash Display'", fontSize: 20, fontWeight: 600, color: C.cr, margin: 0, marginBottom: 4 }}>{provider.name}</h2>
+                  <p style={{ fontSize: 14, color: C.tx3, margin: 0, fontFamily: "'Satoshi'", lineHeight: 1.5 }}>{provider.description}</p>
                 </div>
-
-                {/* Status indicator */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    flexShrink: 0,
-                    marginLeft: 16,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      background: connected ? C.green : C.tx4,
-                      boxShadow: connected
-                        ? `0 0 8px ${C.green}60`
-                        : "none",
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontSize: 14,
-                      color: connected ? C.green : C.tx4,
-                      fontFamily: "'Satoshi'",
-                      fontWeight: 500,
-                    }}
-                  >
-                    {connected ? "Connected" : "Not configured"}
-                  </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: 16 }}>
+                  <div style={{
+                    width: 8, height: 8, borderRadius: "50%",
+                    background: info.connected ? healthColor(info.health) : C.tx4,
+                    boxShadow: info.connected && info.health === "healthy" ? `0 0 8px ${C.green}60` : "none",
+                  }} />
+                  <span style={{ fontSize: 14, color: label.color, fontFamily: "'Satoshi'", fontWeight: 500 }}>{label.text}</span>
                 </div>
               </div>
 
-              {/* Fields */}
-              {showForm && (
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 14,
-                  }}
-                >
-                  {provider.key === "launchlemonade" && (
-                    <p
-                      style={{
-                        fontSize: 13,
-                        color: C.tx4,
-                        margin: 0,
-                        fontFamily: "'Satoshi'",
-                        fontStyle: "italic",
-                      }}
-                    >
-                      Agent IDs are workspace-specific
-                    </p>
+              {info.connected && !editing[provider.key] && (
+                <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+                  {info.hint && (
+                    <div style={{ fontSize: 14, color: C.tx3, fontFamily: "'JetBrains Mono'" }}>
+                      API Key: <span style={{ color: C.tx4 }}>{info.hint}</span>
+                    </div>
                   )}
+                  {info.extra_hint && (
+                    <div style={{ fontSize: 14, color: C.tx3, fontFamily: "'JetBrains Mono'" }}>
+                      Agent ID: <span style={{ color: C.tx4 }}>{info.extra_hint}</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
+              {showForm && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {provider.key === "launchlemonade" && (
+                    <p style={{ fontSize: 13, color: C.tx4, margin: 0, fontFamily: "'Satoshi'", fontStyle: "italic" }}>Agent IDs are workspace-specific</p>
+                  )}
                   {provider.fields.map((field) => (
                     <div key={field.name}>
-                      <label
-                        style={{
-                          display: "block",
-                          fontSize: 13,
-                          color: C.tx3,
-                          marginBottom: 6,
-                          fontFamily: "'Satoshi'",
-                          fontWeight: 500,
-                        }}
-                      >
-                        {field.label}
-                      </label>
+                      <label style={{ display: "block", fontSize: 13, color: C.tx3, marginBottom: 6, fontFamily: "'Satoshi'", fontWeight: 500 }}>{field.label}</label>
                       <input
-                        type={field.type}
+                        type="password"
                         placeholder={field.placeholder}
-                        value={
-                          fieldValues[`${provider.key}_${field.name}`] || ""
-                        }
-                        onChange={(e) =>
-                          handleFieldChange(
-                            provider.key,
-                            field.name,
-                            e.target.value
-                          )
-                        }
+                        value={fieldValues[`${provider.key}_${field.name}`] || ""}
+                        onChange={(e) => handleFieldChange(provider.key, field.name, e.target.value)}
+                        autoComplete="new-password"
+                        data-1p-ignore="true"
+                        onCopy={(e) => e.preventDefault()}
                         style={{
-                          width: "100%",
-                          padding: "10px 14px",
-                          background: C.ob1,
-                          border: `1px solid ${C.ob6}`,
-                          borderRadius: 10,
-                          color: C.tx,
-                          fontSize: 15,
-                          fontFamily: "'JetBrains Mono'",
-                          outline: "none",
-                          boxSizing: "border-box",
-                          transition: "border-color 0.2s",
+                          width: "100%", padding: "10px 14px", background: C.ob1,
+                          border: `1px solid ${C.ob6}`, borderRadius: 10, color: C.tx,
+                          fontSize: 15, fontFamily: "'JetBrains Mono'", outline: "none",
+                          boxSizing: "border-box", transition: "border-color 0.2s",
                         }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = C.rg;
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = C.ob6;
-                        }}
+                        onFocus={(e) => { e.currentTarget.style.borderColor = C.rg; }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = C.ob6; }}
                       />
                     </div>
                   ))}
-
-                  {/* Action row */}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      marginTop: 4,
-                    }}
-                  >
-                    <button
-                      onClick={() => handleSave(provider)}
-                      disabled={isSaving}
-                      style={{
-                        padding: "10px 24px",
-                        background: `linear-gradient(135deg, ${C.rg}, ${C.rg2})`,
-                        border: "none",
-                        borderRadius: 10,
-                        color: C.ob1,
-                        fontSize: 15,
-                        fontWeight: 600,
-                        fontFamily: "'Satoshi'",
-                        cursor: isSaving ? "wait" : "pointer",
-                        opacity: isSaving ? 0.7 : 1,
-                        transition: "all 0.2s",
-                      }}
-                    >
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 4 }}>
+                    <button onClick={() => handleSave(provider)} disabled={isSaving} style={{
+                      padding: "10px 24px", background: `linear-gradient(135deg, ${C.rg}, ${C.rg2})`,
+                      border: "none", borderRadius: 10, color: C.ob1, fontSize: 15, fontWeight: 600,
+                      fontFamily: "'Satoshi'", cursor: isSaving ? "wait" : "pointer",
+                      opacity: isSaving ? 0.7 : 1, transition: "all 0.2s",
+                    }}>
                       {isSaving ? "Saving..." : "Save"}
                     </button>
-
-                    {connected && editing[provider.key] && (
-                      <button
-                        onClick={() =>
-                          setEditing((prev) => ({
-                            ...prev,
-                            [provider.key]: false,
-                          }))
-                        }
-                        style={{
-                          padding: "10px 20px",
-                          background: "transparent",
-                          border: `1px solid ${C.glassBrd}`,
-                          borderRadius: 10,
-                          color: C.tx3,
-                          fontSize: 15,
-                          fontFamily: "'Satoshi'",
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                        }}
-                      >
-                        Cancel
-                      </button>
+                    {info.connected && editing[provider.key] && (
+                      <button onClick={() => setEditing((prev) => ({ ...prev, [provider.key]: false }))} style={{
+                        padding: "10px 20px", background: "transparent", border: `1px solid ${C.glassBrd}`,
+                        borderRadius: 10, color: C.tx3, fontSize: 15, fontFamily: "'Satoshi'", cursor: "pointer", transition: "all 0.2s",
+                      }}>Cancel</button>
                     )}
-
-                    {/* Message */}
                     {providerMessage && (
-                      <span
-                        style={{
-                          fontSize: 14,
-                          color: providerMessage.isError ? C.red : C.green,
-                          fontFamily: "'Satoshi'",
-                          fontWeight: 500,
-                        }}
-                      >
-                        {providerMessage.text}
-                      </span>
+                      <span style={{ fontSize: 14, color: providerMessage.isError ? C.red : C.green, fontFamily: "'Satoshi'", fontWeight: 500 }}>{providerMessage.text}</span>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* Change Key button when connected and not editing */}
-              {connected && !editing[provider.key] && (
-                <div style={{ marginTop: 16 }}>
-                  <button
-                    onClick={() => handleChangeKey(provider.key)}
-                    style={{
-                      padding: "8px 18px",
-                      background: "transparent",
-                      border: `1px solid ${C.glassBrd}`,
-                      borderRadius: 10,
-                      color: C.tx3,
-                      fontSize: 14,
-                      fontFamily: "'Satoshi'",
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                    }}
-                  >
-                    Change Key
-                  </button>
+              {info.connected && !editing[provider.key] && (
+                <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
+                  <button onClick={() => setEditing((prev) => ({ ...prev, [provider.key]: true }))} style={{
+                    padding: "8px 18px", background: "transparent", border: `1px solid ${C.glassBrd}`,
+                    borderRadius: 10, color: C.tx3, fontSize: 14, fontFamily: "'Satoshi'", cursor: "pointer", transition: "all 0.2s",
+                  }}>Change Key</button>
+                  <button onClick={() => handleDisconnect(provider.key)} style={{
+                    padding: "8px 18px", background: "transparent", border: "1px solid rgba(255,80,80,0.3)",
+                    borderRadius: 10, color: C.red, fontSize: 14, fontFamily: "'Satoshi'", cursor: "pointer", transition: "all 0.2s",
+                  }}>Disconnect</button>
                 </div>
               )}
             </div>
