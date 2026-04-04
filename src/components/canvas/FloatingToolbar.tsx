@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { C } from "../../lib/colors";
 import { I } from "../../lib/icons";
 import { useDrag } from "./useDrag";
