@@ -196,3 +196,6 @@ These sit alongside the existing LaunchLemonade API key and chat agent ID fields
 - **Large canvas context:** Truncate canvas content sent to `/api/context-search` to a reasonable token limit (e.g., last 20 blocks or ~4000 characters) to avoid excessive API costs.
 - **Card persistence:** Pinned cards on the canvas are stored as canvas blocks with `type: "search_card"` and the full SearchCard data in the block's content field. They persist across sessions.
 - **Multiple search panels:** Only one floating results panel at a time. A new search replaces the previous results.
+- **Extract routing:** The Extract action sends the card content + surrounding canvas context to `/api/chat` (existing Profé route) with a system prompt that includes the user's extraction style preference. No new route needed.
+- **LaunchLemonade API errors:** If the LaunchLemonade API returns an error or times out, show an inline error message in the results panel (e.g., "Search failed — check your connection and API key"). Do not use disruptive modals.
+- **`search_card` block rendering:** AppInner's canvas rendering logic needs a new branch for `type: "search_card"` blocks. These blocks participate in normal block ordering but are visually distinct and support Extract/Remove/Visit Source actions instead of text editing. They are excluded from document export.
