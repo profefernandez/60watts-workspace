@@ -2,12 +2,17 @@
 
 export interface Block {
   id: string;
-  type: "heading" | "subheading" | "text" | "image" | "youtube";
+  type: "heading" | "text" | "image" | "youtube";
   content: string;
   imageUrl?: string;
   prompt?: string;
   url?: string;
   videoId?: string;
+  pos_x?: number | null;
+  pos_y?: number | null;
+  width?: number | null;
+  height?: number | null;
+  format?: string | null;
 }
 
 export interface KBFile {

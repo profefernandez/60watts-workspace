@@ -43,6 +43,11 @@ export interface CanvasBlock {
   type: string;
   content: string;
   sort_order: number;
+  pos_x?: number | null;
+  pos_y?: number | null;
+  width?: number | null;
+  height?: number | null;
+  format?: string | null;
 }
 
 export interface Schema {
