@@ -14,9 +14,15 @@ import {
 import FloatingToolbar from "./canvas/FloatingToolbar";
 import ImageGalleryModal from "./canvas/ImageGalleryModal";
 import YouTubeModal from "./canvas/YouTubeModal";
+import SearchCard from "./SearchCard";
+import type { SearchCardData } from "@/lib/types";
+
+// Extend CanvasBlock locally to support search_card blocks
+type CanvasBlockExtended = CanvasBlock & { searchData?: SearchCardData };
 
 interface Props {
   workspaceId: string;
+  onVisitSource?: (url: string) => void;
 }
 
 type BlockType = "heading" | "subheading" | "text" | "image" | "youtube";
@@ -345,8 +351,8 @@ function extractYouTubeId(url: string): string | null {
 }
 
 // ── Main Canvas View ──
-export default function CanvasView({ workspaceId }: Props) {
-  const [blocks, setBlocks] = useState<CanvasBlock[]>([]);
+export default function CanvasView({ workspaceId, onVisitSource }: Props) {
+  const [blocks, setBlocks] = useState<CanvasBlockExtended[]>([]);
   const [saving, setSaving] = useState(false);
   const [useLocal, setUseLocal] = useState(false);
   const [lastAddedId, setLastAddedId] = useState<string | null>(null);
@@ -363,6 +369,24 @@ export default function CanvasView({ workspaceId }: Props) {
     } catch {
       setUseLocal(true);
     }
+  }, [workspaceId]);
+
+  // Listen for search cards added from SearchResultsPanel
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const card = (e as CustomEvent<SearchCardData>).detail;
+      const newBlock: CanvasBlockExtended = {
+        id: card.id,
+        workspace_id: workspaceId,
+        type: "search_card",
+        content: card.title,
+        sort_order: Date.now(),
+        searchData: card,
+      };
+      setBlocks((prev) => [...prev, newBlock]);
+    };
+    window.addEventListener("60w:add-search-card", handler);
+    return () => window.removeEventListener("60w:add-search-card", handler);
   }, [workspaceId]);
 
   useEffect(() => {
@@ -626,15 +650,78 @@ export default function CanvasView({ workspaceId }: Props) {
           </div>
         ) : (
           <>
-            {blocks.map((block) => (
-              <BlockEditor
-                key={block.id}
-                block={block}
-                onUpdate={handleUpdate}
-                onDelete={handleDelete}
-                autoFocus={block.id === lastAddedId}
-              />
-            ))}
+            {blocks.map((block) => {
+              if (block.type === "search_card" && block.searchData) {
+                return (
+                  <SearchCard
+                    key={block.id}
+                    card={block.searchData}
+                    mode="pinned"
+                    onVisitSource={(url) => {
+                      if (onVisitSource) {
+                        onVisitSource(url);
+                      } else {
+                        window.open(url, "_blank", "noopener,noreferrer");
+                      }
+                    }}
+                    onExtract={async (card) => {
+                      const style = localStorage.getItem("60w_extraction_style") || "light";
+                      const surroundingBlocks = blocks
+                        .filter((b) => b.type !== "search_card")
+                        .slice(-10)
+                        .map((b) => b.content)
+                        .join("\n");
+
+                      const res = await fetch("/api/chat", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          messages: [
+                            {
+                              role: "user",
+                              content: `Extract and integrate this search result into my document. Style: ${style === "full" ? "Full rewrite — rewrite in my voice to blend seamlessly" : "Light touch — clean up and format to match my document style"}.
+
+SEARCH RESULT:
+Title: ${card.title}
+Content: ${card.snippet}
+Source: ${card.source_url}
+
+SURROUNDING DOCUMENT CONTEXT:
+${surroundingBlocks}
+
+Return ONLY the extracted text content, ready to be inserted. No meta-commentary.`,
+                            },
+                          ],
+                        }),
+                      });
+
+                      if (res.ok) {
+                        const data = await res.json();
+                        setBlocks((prev) =>
+                          prev.map((b) =>
+                            b.id === card.id
+                              ? { ...b, type: "text" as const, content: data.content, searchData: undefined }
+                              : b
+                          )
+                        );
+                      }
+                    }}
+                    onRemove={(cardId) => {
+                      setBlocks((prev) => prev.filter((b) => b.id !== cardId));
+                    }}
+                  />
+                );
+              }
+              return (
+                <BlockEditor
+                  key={block.id}
+                  block={block}
+                  onUpdate={handleUpdate}
+                  onDelete={handleDelete}
+                  autoFocus={block.id === lastAddedId}
+                />
+              );
+            })}
             {/* Click below last block to add new text block */}
             <div
               onClick={() => addBlock("text")}
