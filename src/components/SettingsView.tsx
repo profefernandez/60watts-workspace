@@ -67,8 +67,8 @@ function healthColor(health: string): string {
   return C.red;
 }
 
-function healthLabel(info: ProviderStatusInfo): { text: string; color: string } {
-  if (!info.connected) return { text: "Not configured", color: C.tx4 };
+function healthLabel(info: ProviderStatusInfo | undefined): { text: string; color: string } {
+  if (!info || !info.connected) return { text: "Not configured", color: C.tx4 };
   if (info.health === "healthy") return { text: "Connected", color: C.green };
   if (info.health === "degraded") return { text: "Slow responses", color: "#F5A623" };
   return { text: info.health_message || "Unreachable", color: C.red };
@@ -215,14 +215,14 @@ export default function SettingsView({ workspaceId }: SettingsViewProps) {
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: 16 }}>
                   <div style={{
                     width: 8, height: 8, borderRadius: "50%",
-                    background: info.connected ? healthColor(info.health) : C.tx4,
-                    boxShadow: info.connected && info.health === "healthy" ? `0 0 8px ${C.green}60` : "none",
+                    background: info?.connected ? healthColor(info.health) : C.tx4,
+                    boxShadow: info?.connected && info.health === "healthy" ? `0 0 8px ${C.green}60` : "none",
                   }} />
                   <span style={{ fontSize: 14, color: label.color, fontFamily: "'Satoshi'", fontWeight: 500 }}>{label.text}</span>
                 </div>
               </div>
 
-              {info.connected && !editing[provider.key] && (
+              {info?.connected && !editing[provider.key] && (
                 <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
                   {!provider.agentIdOnly && info.hint && (
                     <div style={{ fontSize: 14, color: C.tx3, fontFamily: "'JetBrains Mono'" }}>
@@ -231,12 +231,12 @@ export default function SettingsView({ workspaceId }: SettingsViewProps) {
                   )}
                   {provider.agentIdOnly && info.extra_hint && (
                     <div style={{ fontSize: 14, color: C.tx3, fontFamily: "'JetBrains Mono'" }}>
-                      Search Agent ID: <span style={{ color: C.tx4 }}>{info.extra_hint}</span>
+                      Search Agent ID: <span style={{ color: C.tx4 }}>{info?.extra_hint}</span>
                     </div>
                   )}
                   {!provider.agentIdOnly && info.extra_hint && (
                     <div style={{ fontSize: 14, color: C.tx3, fontFamily: "'JetBrains Mono'" }}>
-                      Agent ID: <span style={{ color: C.tx4 }}>{info.extra_hint}</span>
+                      Agent ID: <span style={{ color: C.tx4 }}>{info?.extra_hint}</span>
                     </div>
                   )}
                 </div>
@@ -278,7 +278,7 @@ export default function SettingsView({ workspaceId }: SettingsViewProps) {
                     }}>
                       {isSaving ? "Saving..." : "Save"}
                     </button>
-                    {info.connected && editing[provider.key] && (
+                    {info?.connected && editing[provider.key] && (
                       <button onClick={() => setEditing((prev) => ({ ...prev, [provider.key]: false }))} style={{
                         padding: "10px 20px", background: "transparent", border: `1px solid ${C.glassBrd}`,
                         borderRadius: 10, color: C.tx3, fontSize: 15, fontFamily: "'Satoshi'", cursor: "pointer", transition: "all 0.2s",
@@ -291,7 +291,7 @@ export default function SettingsView({ workspaceId }: SettingsViewProps) {
                 </div>
               )}
 
-              {info.connected && !editing[provider.key] && (
+              {info?.connected && !editing[provider.key] && (
                 <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
                   <button onClick={() => setEditing((prev) => ({ ...prev, [provider.key]: true }))} style={{
                     padding: "8px 18px", background: "transparent", border: `1px solid ${C.glassBrd}`,
