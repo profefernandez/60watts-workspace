@@ -1,17 +1,21 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { getDecryptedKey } from "@/lib/crypto";
 
 const LL_URL = "https://api.launchlemonade.app/v1/chat";
 const MAX_CONTEXT_CHARS = 4000;
 
-function truncateContext(blocks: any[], kbFiles: any[]): string {
+interface ContextBlock { content?: string }
+interface ContextFile { name: string; textContent?: string | null }
+
+function truncateContext(blocks: ContextBlock[], kbFiles: ContextFile[]): string {
   const blockText = blocks
     .slice(-20)
-    .map((b: any) => b.content || "")
+    .map((b) => b.content || "")
     .join("\n");
   const kbText = kbFiles
     .slice(0, 5)
-    .map((f: any) => `[${f.name}]: ${(f.textContent || "").slice(0, 500)}`)
+    .map((f) => `[${f.name}]: ${(f.textContent || "").slice(0, 500)}`)
     .join("\n");
   const combined = `CANVAS:\n${blockText}\n\nKB FILES:\n${kbText}`;
   return combined.slice(0, MAX_CONTEXT_CHARS);

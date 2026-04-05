@@ -1,12 +1,12 @@
 import React, { useState, useCallback } from "react";
-import type { SearchCardData } from "@/lib/types";
+import type { SearchCardData, Block, KBFile } from "@/lib/types";
 
 interface SearchBarProps {
   onResults: (results: SearchCardData[], isContext: boolean) => void;
   onLoading: (loading: boolean) => void;
   onError: (error: string) => void;
-  canvasBlocks: any[];
-  kbFiles: any[];
+  canvasBlocks: Block[];
+  kbFiles: KBFile[];
   disabled?: boolean;
 }
 
