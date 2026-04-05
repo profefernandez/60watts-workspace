@@ -641,6 +641,17 @@ export default function CanvasView({ workspaceId, onVisitSource, content, onCont
     }
   }, []);
 
+  const handleFontChange = useCallback((fontFamily: string) => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+    const range = sel.getRangeAt(0);
+    const span = document.createElement("span");
+    span.style.fontFamily = fontFamily;
+    range.surroundContents(span);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }, []);
+
   const handleHeading = useCallback(() => {
     // Heading toggle handled by toolbar buttons above
   }, []);
@@ -837,6 +848,7 @@ Return ONLY the extracted text content, ready to be inserted. No meta-commentary
         onFormat={handleFormat}
         onHeading={handleHeading}
         onInsert={handleInsertFromToolbar}
+        onFontChange={handleFontChange}
       />
 
       {/* ── Image Gallery Modal (NEW) ── */}

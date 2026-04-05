@@ -8,17 +8,34 @@ type FormatAction = "bold" | "italic" | "underline" | "strikethrough";
 type HeadingAction = "h1" | "h2";
 type InsertAction = "image" | "youtube";
 
+const FONT_OPTIONS = [
+  { label: "Satoshi", value: "'Satoshi'" },
+  { label: "Clash Display", value: "'Clash Display'" },
+  { label: "JetBrains Mono", value: "'JetBrains Mono'" },
+  { label: "Poppins", value: "'Poppins'" },
+  { label: "Work Sans", value: "'Work Sans'" },
+  { label: "Raleway", value: "'Raleway'" },
+  { label: "Nunito", value: "'Nunito'" },
+  { label: "Lora", value: "'Lora'" },
+  { label: "Merriweather", value: "'Merriweather'" },
+  { label: "Playfair Display", value: "'Playfair Display'" },
+  { label: "Source Serif 4", value: "'Source Serif 4'" },
+];
+
 interface Props {
   onFormat: (action: FormatAction) => void;
   onHeading: (action: HeadingAction) => void;
   onInsert: (action: InsertAction) => void;
+  onFontChange?: (fontFamily: string) => void;
 }
 
-export default function FloatingToolbar({ onFormat, onHeading, onInsert }: Props) {
+export default function FloatingToolbar({ onFormat, onHeading, onInsert, onFontChange }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [posX, setPosX] = useState<number | null>(null);
   const [posY, setPosY] = useState<number | null>(null);
+  const [showFontPicker, setShowFontPicker] = useState(false);
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const fontPickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (posX === null) {
@@ -154,6 +171,86 @@ export default function FloatingToolbar({ onFormat, onHeading, onInsert }: Props
       {formatBtn(<em>I</em>, "italic", { fontStyle: "italic" })}
       {formatBtn(<u>U</u>, "underline", { textDecoration: "underline" })}
       {formatBtn(<s>S</s>, "strikethrough", { textDecoration: "line-through" })}
+      {sep}
+
+      {/* Font picker */}
+      <div style={{ position: "relative" }}>
+        <button
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setShowFontPicker(!showFontPicker);
+          }}
+          style={{
+            padding: "5px 9px",
+            borderRadius: 7,
+            fontSize: 12,
+            color: C.cr,
+            background: showFontPicker ? "rgba(232,168,124,0.15)" : "transparent",
+            border: "none",
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+            fontFamily: "'Satoshi'",
+          }}
+          title="Change font"
+        >
+          Aa ▾
+        </button>
+        {showFontPicker && (
+          <div
+            ref={fontPickerRef}
+            style={{
+              position: "absolute",
+              bottom: "100%",
+              left: 0,
+              marginBottom: 6,
+              background: "rgba(20,22,28,0.95)",
+              backdropFilter: "blur(24px)",
+              WebkitBackdropFilter: "blur(24px)",
+              border: `1px solid ${C.glassBrd}`,
+              borderRadius: 12,
+              padding: 6,
+              minWidth: 180,
+              maxHeight: 280,
+              overflowY: "auto",
+              zIndex: 110,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+            }}
+          >
+            {FONT_OPTIONS.map((font) => (
+              <button
+                key={font.value}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  if (onFontChange) onFontChange(font.value);
+                  setShowFontPicker(false);
+                }}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: "none",
+                  borderRadius: 6,
+                  background: "transparent",
+                  color: C.tx2,
+                  fontSize: 14,
+                  fontFamily: font.value,
+                  cursor: "pointer",
+                  textAlign: "left",
+                  transition: "background 0.1s",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background = "rgba(232,168,124,0.1)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                }}
+              >
+                {font.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       {sep}
 
       <button
