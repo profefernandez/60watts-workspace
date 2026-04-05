@@ -71,6 +71,13 @@ export default function ImageGalleryModal({
     return () => clearTimeout(t);
   }, [url]);
 
+  const readFileAsDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(file);
+    });
+
   const handleUpload = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -79,7 +86,13 @@ export default function ImageGalleryModal({
       try {
         const category = fileCat(file.type);
         const result = await uploadKBFile(workspaceId, file, category);
-        onInsert(result.file);
+        // If the file ID is a local ID (offline), read as data URL so it renders
+        if (result.file.startsWith("local-")) {
+          const dataUrl = await readFileAsDataUrl(file);
+          onInsert(dataUrl);
+        } else {
+          onInsert(result.file);
+        }
       } catch (err) {
         console.error("Upload failed:", err);
       } finally {
@@ -99,7 +112,12 @@ export default function ImageGalleryModal({
       try {
         const category = fileCat(file.type);
         const result = await uploadKBFile(workspaceId, file, category);
-        onInsert(result.file);
+        if (result.file.startsWith("local-")) {
+          const dataUrl = await readFileAsDataUrl(file);
+          onInsert(dataUrl);
+        } else {
+          onInsert(result.file);
+        }
       } catch (err) {
         console.error("Upload failed:", err);
       } finally {

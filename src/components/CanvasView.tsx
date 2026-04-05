@@ -163,13 +163,26 @@ function BlockEditor({
           onMouseEnter={(e) => (e.currentTarget.style.borderColor = `${C.rg}60`)}
           onMouseLeave={(e) => (e.currentTarget.style.borderColor = "transparent")}
         >
-          {block.content && (block.content.startsWith("http") || block.content.startsWith("data:")) ? (
-            <img
-              src={block.content}
-              alt=""
-              style={{ width: "100%", borderRadius: 12, display: "block" }}
-            />
-          ) : (
+          {block.content && block.content.trim() ? (() => {
+            // Resolve the image source: URLs and data URIs pass through,
+            // Directus file IDs get converted to asset URLs
+            let imgSrc = block.content;
+            if (
+              !imgSrc.startsWith("http") &&
+              !imgSrc.startsWith("data:") &&
+              !imgSrc.startsWith("blob:")
+            ) {
+              const dUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL || "http://localhost:8055";
+              imgSrc = `${dUrl}/assets/${imgSrc}`;
+            }
+            return (
+              <img
+                src={imgSrc}
+                alt=""
+                style={{ width: "100%", borderRadius: 12, display: "block" }}
+              />
+            );
+          })() : (
             <div
               contentEditable
               suppressContentEditableWarning
@@ -545,6 +558,20 @@ export default function CanvasView({ workspaceId, onVisitSource, content, onCont
   const handleImageInsert = useCallback(
     async (imageSource: string) => {
       setShowImageGallery(false);
+
+      // Convert Directus file IDs to full asset URLs
+      const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL || "http://localhost:8055";
+      let resolvedSrc = imageSource;
+      if (
+        imageSource &&
+        !imageSource.startsWith("http") &&
+        !imageSource.startsWith("data:") &&
+        !imageSource.startsWith("blob:")
+      ) {
+        // It's a Directus file ID — build the asset URL
+        resolvedSrc = `${directusUrl}/assets/${imageSource}`;
+      }
+
       const maxSort = blocks.length > 0 ? Math.max(...blocks.map((b) => b.sort_order)) : 0;
 
       if (isControlled) {
@@ -552,7 +579,7 @@ export default function CanvasView({ workspaceId, onVisitSource, content, onCont
           id: `blk-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           workspace_id: workspaceId,
           type: "image",
-          content: imageSource,
+          content: resolvedSrc,
           sort_order: maxSort + 1,
         };
         setBlocks((prev) => {
@@ -567,7 +594,7 @@ export default function CanvasView({ workspaceId, onVisitSource, content, onCont
         id: localId(),
         workspace_id: workspaceId,
         type: "image",
-        content: imageSource,
+        content: resolvedSrc,
         sort_order: maxSort + 1,
       };
       setBlocks((prev) => [...prev, newBlock]);
@@ -575,7 +602,7 @@ export default function CanvasView({ workspaceId, onVisitSource, content, onCont
         const created = await createCanvasBlock({
           workspace_id: workspaceId,
           type: "image",
-          content: imageSource,
+          content: resolvedSrc,
           sort_order: maxSort + 1,
         });
         setBlocks((prev) =>
