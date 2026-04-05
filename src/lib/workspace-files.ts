@@ -127,7 +127,7 @@ export async function createWorkspaceFile(data: {
 /** Update name, content, thumbnail, and/or sort_order of a workspace file. */
 export async function updateWorkspaceFile(
   id: string,
-  data: Partial<Pick<WorkspaceFile, "name" | "content" | "thumbnail" | "sort_order">>,
+  data: Partial<Pick<WorkspaceFile, "name" | "type" | "content" | "thumbnail" | "sort_order">>,
   workspaceId: string
 ): Promise<void> {
   if (await isOffline()) {

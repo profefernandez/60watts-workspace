@@ -203,16 +203,8 @@ export default function WorkspaceSurface({
             : f
         )
       );
-      // Note: type is not in the updateWorkspaceFile partial type but we'll
-      // pass it through — the store accepts any Partial<WorkspaceFile fields>.
-      // If type isn't supported, the local state change is still valid.
       try {
-        await updateWorkspaceFile(
-          activeFileId,
-          // Cast through unknown since type isn't in the partial signature
-          { name: activeFile?.name } as Parameters<typeof updateWorkspaceFile>[1],
-          workspaceId
-        );
+        await updateWorkspaceFile(activeFileId, { type }, workspaceId);
       } catch {
         // ignore if backend doesn't support type changes
       }
