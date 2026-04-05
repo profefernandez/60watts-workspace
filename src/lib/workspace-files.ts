@@ -81,11 +81,11 @@ export async function getWorkspaceFile(
   return results[0] ?? null;
 }
 
-/** Create a new workspace file. Default content: "[]" for documents, "" for designs. */
+/** Create a new workspace file. Default content: "[]" for documents, "" for designs and html. */
 export async function createWorkspaceFile(data: {
   workspace_id: string;
   name: string;
-  type: "design" | "document";
+  type: "design" | "html" | "document";
   content?: string;
 }): Promise<WorkspaceFile> {
   const defaultContent = data.content !== undefined

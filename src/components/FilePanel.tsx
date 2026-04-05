@@ -14,7 +14,7 @@ interface FilePanelProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
   onSelectFile: (file: WorkspaceFile) => void;
-  onCreateFile: (type: "design" | "document") => void;
+  onCreateFile: (type: "design" | "html" | "document") => void;
   onRenameFile: (id: string, name: string) => void;
   onDeleteFile: (id: string) => void;
   onDuplicateFile: (id: string) => void;
@@ -282,6 +282,14 @@ export const FilePanel: React.FC<FilePanelProps> = ({
                   }}
                 />
                 <DropItem
+                  icon={<span style={{ color: C.rg }}>{I.pen}</span>}
+                  label="HTML Render"
+                  onClick={() => {
+                    onCreateFile("html");
+                    setNewDropOpen(false);
+                  }}
+                />
+                <DropItem
                   icon={I.file}
                   label="Document"
                   onClick={() => {
@@ -447,13 +455,13 @@ export const FilePanel: React.FC<FilePanelProps> = ({
                         fontSize: 11,
                         fontFamily: "'Satoshi'",
                         fontWeight: 500,
-                        color: file.type === "design" ? C.rg : C.tx4,
+                        color: file.type === "design" || file.type === "html" ? C.rg : C.tx4,
                         background:
-                          file.type === "design"
+                          file.type === "design" || file.type === "html"
                             ? `rgba(232,168,124,0.12)`
                             : "rgba(255,255,255,0.05)",
                         border: `1px solid ${
-                          file.type === "design"
+                          file.type === "design" || file.type === "html"
                             ? "rgba(232,168,124,0.2)"
                             : C.glassBrd
                         }`,
@@ -462,7 +470,7 @@ export const FilePanel: React.FC<FilePanelProps> = ({
                         letterSpacing: "0.04em",
                       }}
                     >
-                      {file.type === "design" ? "Design" : "Doc"}
+                      {file.type === "design" ? "Design" : file.type === "html" ? "HTML" : "Doc"}
                     </span>
 
                     {/* Last edited */}

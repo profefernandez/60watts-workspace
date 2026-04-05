@@ -78,4 +78,4 @@ export type Tab = "home" | "workspace" | "kb" | "research" | "videos" | "setting
 
 export type PrototypeMode = "split" | "code" | "preview";
 
-export type WorkspaceFileType = "design" | "document";
+export type WorkspaceFileType = "design" | "html" | "document";

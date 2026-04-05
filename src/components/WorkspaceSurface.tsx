@@ -135,8 +135,13 @@ export default function WorkspaceSurface({
   // ── CRUD handlers ─────────────────────────────────────────────────────────
 
   const handleCreateFile = useCallback(
-    async (type: "design" | "document") => {
-      const name = type === "design" ? "Untitled Design" : "Untitled Document";
+    async (type: "design" | "html" | "document") => {
+      const name =
+        type === "design"
+          ? "Untitled Design"
+          : type === "html"
+          ? "Untitled HTML"
+          : "Untitled Document";
       const created = await createWorkspaceFile({
         workspace_id: workspaceId,
         name,
@@ -194,7 +199,7 @@ export default function WorkspaceSurface({
   // ── Mode tab type override ────────────────────────────────────────────────
 
   const handleSetType = useCallback(
-    async (type: "design" | "document") => {
+    async (type: "design" | "html" | "document") => {
       if (!activeFileId) return;
       setFiles((prev) =>
         prev.map((f) =>
@@ -274,6 +279,13 @@ export default function WorkspaceSurface({
                 onClick={() => handleSetType("design")}
               />
 
+              {/* HTML Render tab */}
+              <TabButton
+                label="HTML Render"
+                active={activeFile.type === "html"}
+                onClick={() => handleSetType("html")}
+              />
+
               {/* Document tab */}
               <TabButton
                 label="Document"
@@ -325,11 +337,26 @@ export default function WorkspaceSurface({
                   onContentChange={handleContentChange}
                   onVisitSource={onVisitSource}
                 />
-              ) : (
+              ) : activeFile.type === "html" ? (
                 <PrototypeView
                   code={activeFile.content}
                   onCodeChange={handleContentChange}
                 />
+              ) : (
+                <div
+                  style={{
+                    flex: 1,
+                    height: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontFamily: "'Satoshi'",
+                    fontSize: 20,
+                    color: C.tx4,
+                  }}
+                >
+                  Design Studio — coming soon
+                </div>
               )}
             </div>
           </>
@@ -393,7 +420,7 @@ const TabButton: React.FC<TabButtonProps> = ({ label, active, onClick }) => {
 
 interface EmptyStateProps {
   workspaceName: string;
-  onCreateFile: (type: "design" | "document") => void;
+  onCreateFile: (type: "design" | "html" | "document") => void;
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({
@@ -538,6 +565,34 @@ const EmptyState: React.FC<EmptyStateProps> = ({
             }}
           >
             Design Studio
+          </button>
+
+          <button
+            onClick={() => onCreateFile("html")}
+            style={{
+              ...glassBtn({
+                padding: "12px 24px",
+                fontSize: 15,
+                borderRadius: 14,
+              }),
+              color: C.rg,
+              border: `1px solid rgba(232,168,124,0.25)`,
+              background: `rgba(232,168,124,0.08)`,
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background =
+                `rgba(232,168,124,0.15)`;
+              (e.currentTarget as HTMLButtonElement).style.borderColor =
+                `rgba(232,168,124,0.4)`;
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background =
+                `rgba(232,168,124,0.08)`;
+              (e.currentTarget as HTMLButtonElement).style.borderColor =
+                `rgba(232,168,124,0.25)`;
+            }}
+          >
+            HTML Render
           </button>
 
           <button

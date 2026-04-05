@@ -54,7 +54,7 @@ export interface WorkspaceFile {
   id: string;
   workspace_id: string;
   name: string;
-  type: "design" | "document";
+  type: "design" | "html" | "document";
   content: string;
   thumbnail: string | null;
   created_at: string;
