@@ -137,12 +137,11 @@ export default function WorkspaceSurface({
 
   const handleCreateFile = useCallback(
     async (type: "design" | "html" | "document") => {
-      const name =
-        type === "design"
-          ? "Untitled Design"
-          : type === "html"
-          ? "Untitled HTML"
-          : "Untitled Document";
+      const typeLabel =
+        type === "design" ? "Design Studio" : type === "html" ? "HTML Render" : "Document";
+      const input = window.prompt(`Name your new ${typeLabel}:`);
+      if (input === null) return; // user cancelled
+      const name = input.trim() || `Untitled ${typeLabel}`;
       const created = await createWorkspaceFile({
         workspace_id: workspaceId,
         name,
