@@ -43,6 +43,23 @@ export interface CanvasBlock {
   type: string;
   content: string;
   sort_order: number;
+  pos_x?: number | null;
+  pos_y?: number | null;
+  width?: number | null;
+  height?: number | null;
+  format?: string | null;
+}
+
+export interface WorkspaceFile {
+  id: string;
+  workspace_id: string;
+  name: string;
+  type: "design" | "html" | "document";
+  content: string;
+  thumbnail: string | null;
+  created_at: string;
+  updated_at: string;
+  sort_order: number;
 }
 
 export interface Schema {
@@ -51,6 +68,7 @@ export interface Schema {
   agent_configs: AgentConfig[];
   user_api_keys: UserApiKey[];
   canvas_blocks: CanvasBlock[];
+  workspace_files: WorkspaceFile[];
 }
 
 // ── Client ──

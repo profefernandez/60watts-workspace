@@ -253,6 +253,41 @@
       "type": "integer",
       "meta": { "interface": "input", "width": "half" },
       "schema": { "default_value": 0 }
+    },
+    {
+      "collection": "canvas_blocks",
+      "field": "pos_x",
+      "type": "float",
+      "meta": { "interface": "input", "hidden": true },
+      "schema": { "is_nullable": true, "default_value": null }
+    },
+    {
+      "collection": "canvas_blocks",
+      "field": "pos_y",
+      "type": "float",
+      "meta": { "interface": "input", "hidden": true },
+      "schema": { "is_nullable": true, "default_value": null }
+    },
+    {
+      "collection": "canvas_blocks",
+      "field": "width",
+      "type": "float",
+      "meta": { "interface": "input", "hidden": true },
+      "schema": { "is_nullable": true, "default_value": null }
+    },
+    {
+      "collection": "canvas_blocks",
+      "field": "height",
+      "type": "float",
+      "meta": { "interface": "input", "hidden": true },
+      "schema": { "is_nullable": true, "default_value": null }
+    },
+    {
+      "collection": "canvas_blocks",
+      "field": "format",
+      "type": "string",
+      "meta": { "interface": "input", "hidden": true },
+      "schema": { "is_nullable": true, "default_value": null }
     }
   ],
   "relations": [

@@ -2,12 +2,28 @@
 
 export interface Block {
   id: string;
-  type: "heading" | "subheading" | "text" | "image" | "youtube";
+  type: "heading" | "text" | "image" | "youtube" | "search_card";
   content: string;
   imageUrl?: string;
   prompt?: string;
   url?: string;
   videoId?: string;
+  pos_x?: number | null;
+  pos_y?: number | null;
+  width?: number | null;
+  height?: number | null;
+  format?: string | null;
+  searchData?: SearchCardData;
+}
+
+export interface SearchCardData {
+  id: string;
+  title: string;
+  snippet: string;
+  source_url: string;
+  source_domain: string;
+  relevance?: string;
+  suggested_location?: string;
 }
 
 export interface KBFile {
@@ -58,6 +74,8 @@ export interface ThemeColors {
   accent: string; accentText: string;
 }
 
-export type Tab = "home" | "canvas" | "prototype" | "kb" | "research" | "youtube";
+export type Tab = "home" | "workspace" | "kb" | "research" | "videos" | "settings";
 
 export type PrototypeMode = "split" | "code" | "preview";
+
+export type WorkspaceFileType = "design" | "html" | "document";

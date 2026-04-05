@@ -176,3 +176,14 @@ body {
 .fadeIn {
   animation: fadeIn 0.2s ease;
 }
+
+/* ── Canvas block placeholders ── */
+[contenteditable]:empty:before {
+  content: attr(data-placeholder);
+  color: rgba(250, 245, 239, 0.15);
+  pointer-events: none;
+}
+
+[contenteditable]:focus:empty:before {
+  color: rgba(250, 245, 239, 0.25);
+}
