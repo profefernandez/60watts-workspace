@@ -231,7 +231,7 @@ export default function SettingsView({ workspaceId }: SettingsViewProps) {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ padding: "32px", maxWidth: 800, margin: "0 auto", fontFamily: "'Satoshi'", color: C.tx }}>
+    <div style={{ padding: "32px", fontFamily: "'Satoshi'", color: C.tx }}>
 
       <h1 style={{ fontFamily: "'Clash Display'", fontSize: 32, fontWeight: 700, color: C.cr, marginBottom: 8, letterSpacing: "-0.02em" }}>
         Settings
