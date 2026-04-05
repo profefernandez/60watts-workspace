@@ -12,12 +12,13 @@ interface ProviderStatusInfo {
   health_message: string | null;
 }
 
-type ProviderKey = "anthropic" | "launchlemonade" | "perplexity" | "youtube" | "pubmed";
+type ProviderKey = "anthropic" | "launchlemonade" | "ll_search" | "perplexity" | "youtube" | "pubmed";
 
 interface ProviderConfig {
   key: ProviderKey;
   name: string;
   description: string;
+  agentIdOnly?: boolean;
   fields: { name: string; label: string; type: "password"; placeholder: string; bodyKey: string }[];
 }
 
@@ -28,6 +29,14 @@ const PROVIDERS: ProviderConfig[] = [
     fields: [
       { name: "api_key", label: "API Key", type: "password", placeholder: "Paste your API key", bodyKey: "api_key" },
       { name: "agent_id", label: "Agent ID", type: "password", placeholder: "Agent ID (e.g., agent_abc123)", bodyKey: "agent_id" },
+    ],
+  },
+  {
+    key: "ll_search", name: "Context Search (Perplexity)",
+    description: "Search Agent ID for Perplexity-powered web search. Reuses your LaunchLemonade API key — only the Search Agent ID is needed here.",
+    agentIdOnly: true,
+    fields: [
+      { name: "agent_id", label: "Search Agent ID", type: "password", placeholder: "Search Agent ID (e.g., agent_search_abc123)", bodyKey: "agent_id" },
     ],
   },
   {
@@ -71,17 +80,20 @@ export default function SettingsView({ workspaceId }: SettingsViewProps) {
   const [statuses, setStatuses] = useState<Record<ProviderKey, ProviderStatusInfo>>({
     anthropic: { connected: false, hint: null, health: "healthy", health_message: null },
     launchlemonade: { connected: false, hint: null, health: "healthy", health_message: null },
+    ll_search: { connected: false, hint: null, health: "healthy", health_message: null },
     perplexity: { connected: false, hint: null, health: "healthy", health_message: null },
     youtube: { connected: false, hint: null, health: "healthy", health_message: null },
     pubmed: { connected: false, hint: null, health: "healthy", health_message: null },
   });
   const [editing, setEditing] = useState<Record<ProviderKey, boolean>>({
-    anthropic: false, launchlemonade: false, perplexity: false, youtube: false, pubmed: false,
+    anthropic: false, launchlemonade: false, ll_search: false, perplexity: false, youtube: false, pubmed: false,
   });
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<ProviderKey | null>(null);
   const [message, setMessage] = useState<{ provider: ProviderKey; text: string; isError: boolean } | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
+  const [extractionStyle, setExtractionStyle] = useState<"light" | "full">("light");
+  const [sourceBrowser, setSourceBrowser] = useState<"embedded" | "external">("embedded");
 
   void workspaceId;
 
@@ -100,13 +112,33 @@ export default function SettingsView({ workspaceId }: SettingsViewProps) {
   useEffect(() => { const i = setInterval(fetchStatus, 30_000); return () => clearInterval(i); }, [fetchStatus]);
   useEffect(() => { if (!message) return; const t = setTimeout(() => setMessage(null), 4000); return () => clearTimeout(t); }, [message]);
 
+  useEffect(() => {
+    const es = localStorage.getItem("60w_extraction_style");
+    const sb = localStorage.getItem("60w_source_browser");
+    if (es === "light" || es === "full") setExtractionStyle(es);
+    if (sb === "embedded" || sb === "external") setSourceBrowser(sb);
+  }, []);
+
+  const handleExtractionStyle = (val: "light" | "full") => {
+    setExtractionStyle(val);
+    localStorage.setItem("60w_extraction_style", val);
+  };
+
+  const handleSourceBrowser = (val: "embedded" | "external") => {
+    setSourceBrowser(val);
+    localStorage.setItem("60w_source_browser", val);
+  };
+
   const handleFieldChange = (provider: ProviderKey, field: string, value: string) => {
     setFieldValues((prev) => ({ ...prev, [`${provider}_${field}`]: value }));
   };
 
   const handleSave = async (provider: ProviderConfig) => {
     const apiKey = fieldValues[`${provider.key}_api_key`];
-    if (!apiKey && provider.key !== "pubmed") {
+    const agentId = fieldValues[`${provider.key}_agent_id`];
+    if (provider.agentIdOnly) {
+      if (!agentId) { setMessage({ provider: provider.key, text: "Search Agent ID is required.", isError: true }); return; }
+    } else if (!apiKey && provider.key !== "pubmed") {
       setMessage({ provider: provider.key, text: "API key is required.", isError: true }); return;
     }
     setSaving(provider.key);
@@ -115,7 +147,7 @@ export default function SettingsView({ workspaceId }: SettingsViewProps) {
       const val = fieldValues[`${provider.key}_${field.name}`];
       if (val) body[field.bodyKey] = val;
     }
-    if (!body.api_key) { setSaving(null); setMessage({ provider: provider.key, text: "No key to save.", isError: true }); return; }
+    if (!body.api_key && !body.agent_id) { setSaving(null); setMessage({ provider: provider.key, text: "No value to save.", isError: true }); return; }
 
     try {
       const res = await fetch("/api/settings/keys", {
@@ -192,12 +224,17 @@ export default function SettingsView({ workspaceId }: SettingsViewProps) {
 
               {info.connected && !editing[provider.key] && (
                 <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
-                  {info.hint && (
+                  {!provider.agentIdOnly && info.hint && (
                     <div style={{ fontSize: 14, color: C.tx3, fontFamily: "'JetBrains Mono'" }}>
                       API Key: <span style={{ color: C.tx4 }}>{info.hint}</span>
                     </div>
                   )}
-                  {info.extra_hint && (
+                  {provider.agentIdOnly && info.extra_hint && (
+                    <div style={{ fontSize: 14, color: C.tx3, fontFamily: "'JetBrains Mono'" }}>
+                      Search Agent ID: <span style={{ color: C.tx4 }}>{info.extra_hint}</span>
+                    </div>
+                  )}
+                  {!provider.agentIdOnly && info.extra_hint && (
                     <div style={{ fontSize: 14, color: C.tx3, fontFamily: "'JetBrains Mono'" }}>
                       Agent ID: <span style={{ color: C.tx4 }}>{info.extra_hint}</span>
                     </div>
@@ -259,7 +296,7 @@ export default function SettingsView({ workspaceId }: SettingsViewProps) {
                   <button onClick={() => setEditing((prev) => ({ ...prev, [provider.key]: true }))} style={{
                     padding: "8px 18px", background: "transparent", border: `1px solid ${C.glassBrd}`,
                     borderRadius: 10, color: C.tx3, fontSize: 14, fontFamily: "'Satoshi'", cursor: "pointer", transition: "all 0.2s",
-                  }}>Change Key</button>
+                  }}>{provider.agentIdOnly ? "Change Agent ID" : "Change Key"}</button>
                   <button onClick={() => handleDisconnect(provider.key)} style={{
                     padding: "8px 18px", background: "transparent", border: "1px solid rgba(255,80,80,0.3)",
                     borderRadius: 10, color: C.red, fontSize: 14, fontFamily: "'Satoshi'", cursor: "pointer", transition: "all 0.2s",
@@ -269,6 +306,69 @@ export default function SettingsView({ workspaceId }: SettingsViewProps) {
             </div>
           );
         })}
+      </div>
+
+      {/* ── Local Preferences ── */}
+      <div style={{ marginTop: 40 }}>
+        <h2 style={{ fontFamily: "'Clash Display'", fontSize: 22, fontWeight: 600, color: C.cr, marginBottom: 8 }}>Preferences</h2>
+        <p style={{ fontSize: 15, color: C.tx3, marginBottom: 24, fontFamily: "'Satoshi'" }}>
+          Local settings stored in your browser. No account required.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+          {/* Extraction Style */}
+          <div style={{ ...glass({ padding: "20px 24px" }), display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+            <div>
+              <div style={{ fontFamily: "'Satoshi'", fontSize: 16, fontWeight: 600, color: C.tx, marginBottom: 4 }}>Extraction Style</div>
+              <div style={{ fontFamily: "'Satoshi'", fontSize: 14, color: C.tx3 }}>How much the AI rewrites content pulled from sources</div>
+            </div>
+            <div style={{ display: "flex", gap: 0, borderRadius: 10, overflow: "hidden", border: `1px solid ${C.glassBrd}`, flexShrink: 0 }}>
+              {(["light", "full"] as const).map((val, idx) => (
+                <button
+                  key={val}
+                  onClick={() => handleExtractionStyle(val)}
+                  style={{
+                    padding: "9px 20px",
+                    fontFamily: "'Satoshi'", fontSize: 14, fontWeight: extractionStyle === val ? 600 : 400,
+                    cursor: "pointer", border: "none", transition: "all 0.2s",
+                    borderRight: idx === 0 ? `1px solid ${C.glassBrd}` : "none",
+                    background: extractionStyle === val ? `linear-gradient(135deg, ${C.rg}, ${C.rg2})` : "transparent",
+                    color: extractionStyle === val ? C.ob1 : C.tx3,
+                  }}
+                >
+                  {val === "light" ? "Light Touch" : "Full Rewrite"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Source Browser */}
+          <div style={{ ...glass({ padding: "20px 24px" }), display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+            <div>
+              <div style={{ fontFamily: "'Satoshi'", fontSize: 16, fontWeight: 600, color: C.tx, marginBottom: 4 }}>Source Browser</div>
+              <div style={{ fontFamily: "'Satoshi'", fontSize: 14, color: C.tx3 }}>Where source links open when reviewing search results</div>
+            </div>
+            <div style={{ display: "flex", gap: 0, borderRadius: 10, overflow: "hidden", border: `1px solid ${C.glassBrd}`, flexShrink: 0 }}>
+              {(["embedded", "external"] as const).map((val, idx) => (
+                <button
+                  key={val}
+                  onClick={() => handleSourceBrowser(val)}
+                  style={{
+                    padding: "9px 20px",
+                    fontFamily: "'Satoshi'", fontSize: 14, fontWeight: sourceBrowser === val ? 600 : 400,
+                    cursor: "pointer", border: "none", transition: "all 0.2s",
+                    borderRight: idx === 0 ? `1px solid ${C.glassBrd}` : "none",
+                    background: sourceBrowser === val ? `linear-gradient(135deg, ${C.rg}, ${C.rg2})` : "transparent",
+                    color: sourceBrowser === val ? C.ob1 : C.tx3,
+                  }}
+                >
+                  {val === "embedded" ? "Embedded" : "External"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
   );
