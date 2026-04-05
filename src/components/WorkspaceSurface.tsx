@@ -14,6 +14,7 @@ import {
 import FilePanel from "./FilePanel";
 import CanvasView from "./CanvasView";
 import PrototypeView from "./PrototypeView";
+import DesignStudioView from "./DesignStudioView";
 
 // ── Props ──────────────────────────────────────────────────────────────────
 
@@ -343,20 +344,10 @@ export default function WorkspaceSurface({
                   onCodeChange={handleContentChange}
                 />
               ) : (
-                <div
-                  style={{
-                    flex: 1,
-                    height: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontFamily: "'Satoshi'",
-                    fontSize: 20,
-                    color: C.tx4,
-                  }}
-                >
-                  Design Studio — coming soon
-                </div>
+                <DesignStudioView
+                  content={activeFile.content}
+                  onContentChange={handleContentChange}
+                />
               )}
             </div>
           </>
