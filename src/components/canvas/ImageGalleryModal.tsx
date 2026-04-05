@@ -78,23 +78,20 @@ export default function ImageGalleryModal({
       reader.readAsDataURL(file);
     });
 
-  const handleUpload = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
+  const insertFileAsImage = useCallback(
+    async (file: File) => {
       setUploading(true);
       try {
+        // Always read the file as a data URL first — this guarantees the image
+        // renders immediately regardless of whether Directus is available
+        const dataUrl = await readFileAsDataUrl(file);
+        onInsert(dataUrl);
+
+        // Also save to KB in the background (best-effort)
         const category = fileCat(file.type);
-        const result = await uploadKBFile(workspaceId, file, category);
-        // If the file ID is a local ID (offline), read as data URL so it renders
-        if (result.file.startsWith("local-")) {
-          const dataUrl = await readFileAsDataUrl(file);
-          onInsert(dataUrl);
-        } else {
-          onInsert(result.file);
-        }
+        uploadKBFile(workspaceId, file, category).catch(() => {});
       } catch (err) {
-        console.error("Upload failed:", err);
+        console.error("Image read failed:", err);
       } finally {
         setUploading(false);
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -103,28 +100,23 @@ export default function ImageGalleryModal({
     [workspaceId, onInsert]
   );
 
+  const handleUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      await insertFileAsImage(file);
+    },
+    [insertFileAsImage]
+  );
+
   const handleDrop = useCallback(
     async (e: React.DragEvent) => {
       e.preventDefault();
       const file = e.dataTransfer.files[0];
       if (!file || !file.type.startsWith("image/")) return;
-      setUploading(true);
-      try {
-        const category = fileCat(file.type);
-        const result = await uploadKBFile(workspaceId, file, category);
-        if (result.file.startsWith("local-")) {
-          const dataUrl = await readFileAsDataUrl(file);
-          onInsert(dataUrl);
-        } else {
-          onInsert(result.file);
-        }
-      } catch (err) {
-        console.error("Upload failed:", err);
-      } finally {
-        setUploading(false);
-      }
+      await insertFileAsImage(file);
     },
-    [workspaceId, onInsert]
+    [insertFileAsImage]
   );
 
   const filteredRecent = search
