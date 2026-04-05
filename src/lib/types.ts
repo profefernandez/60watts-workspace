@@ -74,7 +74,7 @@ export interface ThemeColors {
   accent: string; accentText: string;
 }
 
-export type Tab = "home" | "canvas" | "prototype" | "kb" | "research" | "youtube";
+export type Tab = "home" | "workspace" | "kb" | "research" | "videos" | "settings";
 
 export type PrototypeMode = "split" | "code" | "preview";
 
