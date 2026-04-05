@@ -4,9 +4,12 @@ import { C } from "../lib/colors";
 import { glass } from "../lib/styles";
 import { I } from "../lib/icons";
 import { useAuth } from "../lib/auth";
-import directus from "../lib/directus";
 import type { Workspace } from "../lib/directus";
-import { readItems, createItem, aggregate } from "@directus/sdk";
+import {
+  fetchWorkspaces as storeFetchWorkspaces,
+  createWorkspace,
+  getWorkspaceFileCounts,
+} from "../lib/store";
 import CanvasView from "./CanvasView";
 import KBView from "./KBView";
 import PrototypeView from "./PrototypeView";
@@ -14,6 +17,10 @@ import ProfePanel from "./ProfePanel";
 import ResearchModal from "./ResearchModal";
 import YouTubeModal from "./YouTubeModal";
 import SettingsView from "./SettingsView";
+import SearchBar from "./SearchBar";
+import SearchResultsPanel from "./SearchResultsPanel";
+import SourceBrowser from "./SourceBrowser";
+import type { SearchCardData } from "@/lib/types";
 
 /* ═══════════════════════════════════════════════════════════
    60 WATTS OF CLARITY — v6
@@ -87,24 +94,19 @@ export default function AppInner() {
   const [showResearch, setShowResearch] = useState(false);
   const [showYouTube, setShowYouTube] = useState(false);
   const [protoCode, setProtoCode] = useState<string | undefined>();
+  const [searchResults, setSearchResults] = useState<SearchCardData[]>([]);
+  const [searchError, setSearchError] = useState("");
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [sourceBrowserUrl, setSourceBrowserUrl] = useState<string | null>(null);
 
   const fetchWorkspaces = useCallback(async () => {
     try {
-      const items = await directus.request(readItems("workspaces", { sort: ["-updated_at"] }));
-      setWorkspaces(items as Workspace[]);
-      // Fetch file counts per workspace
-      const counts: Record<string, number> = {};
-      for (const ws of items as Workspace[]) {
-        try {
-          const result = await directus.request(aggregate("kb_files", { aggregate: { count: "*" }, query: { filter: { workspace_id: { _eq: ws.id } } } }));
-          counts[ws.id] = Number(result[0]?.count ?? 0);
-        } catch {
-          counts[ws.id] = 0;
-        }
-      }
+      const items = await storeFetchWorkspaces();
+      setWorkspaces(items);
+      const counts = await getWorkspaceFileCounts(items);
       setFileCounts(counts);
     } catch {
-      // Directus may not be connected yet
+      // Store unavailable
     }
   }, []);
 
@@ -112,7 +114,7 @@ export default function AppInner() {
 
   const handleCreate = async (name: string, description: string) => {
     try {
-      await directus.request(createItem("workspaces", { name, description, user_id: user?.id }));
+      await createWorkspace({ name, description, user_id: user?.id });
       setShowCreate(false);
       fetchWorkspaces();
     } catch (err) {
@@ -414,11 +416,26 @@ export default function AppInner() {
               fontSize: 18,
               fontWeight: 600,
               color: C.cr,
+              flexShrink: 0,
             }}
           >
             {VIEW_LABELS[view]}
           </span>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <SearchBar
+            onResults={(results) => {
+              setSearchResults(results);
+              setSearchError("");
+              setShowSearchResults(true);
+            }}
+            onLoading={() => {}}
+            onError={(err) => {
+              setSearchError(err);
+              setShowSearchResults(true);
+            }}
+            canvasBlocks={[]}
+            kbFiles={[]}
+          />
+          <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
             {activeWs && <span style={{ fontSize: 13, color: C.tx3 }}>{activeWs.name}</span>}
             <button
               onClick={logout}
@@ -439,8 +456,13 @@ export default function AppInner() {
         </div>
 
         {/* View content */}
-        <div style={{ flex: 1, overflow: "auto", padding: 24 }}>
-          {view === "home" ? (
+        <div style={{ flex: 1, overflow: "auto", padding: sourceBrowserUrl ? 0 : 24 }}>
+          {sourceBrowserUrl ? (
+            <SourceBrowser
+              url={sourceBrowserUrl}
+              onBack={() => setSourceBrowserUrl(null)}
+            />
+          ) : view === "home" ? (
             /* ── Home: Workspace Grid ── */
             <div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
@@ -512,12 +534,22 @@ export default function AppInner() {
                 ))}
               </div>
             </div>
-          ) : view === "canvas" && activeWs ? (
+          ) : view === "canvas" ? (
             /* ── Canvas View ── */
-            <CanvasView workspaceId={activeWs.id} />
-          ) : view === "kb" && activeWs ? (
+            <CanvasView
+              workspaceId={activeWs?.id ?? "local"}
+              onVisitSource={(url) => {
+                const pref = localStorage.getItem("60w_source_browser") || "embedded";
+                if (pref === "external") {
+                  window.open(url, "_blank", "noopener,noreferrer");
+                } else {
+                  setSourceBrowserUrl(url);
+                }
+              }}
+            />
+          ) : view === "kb" ? (
             /* ── Knowledge Base View ── */
-            <KBView workspaceId={activeWs.id} />
+            <KBView workspaceId={activeWs?.id ?? "local"} />
           ) : view === "prototype" ? (
             /* ── Prototype Studio ── */
             <PrototypeView code={protoCode} onCodeChange={setProtoCode} />
@@ -539,6 +571,25 @@ export default function AppInner() {
       </main>
 
       {/* ── Layer 3: Floating Panels ── */}
+      {showSearchResults && (
+        <SearchResultsPanel
+          results={searchResults}
+          error={searchError}
+          onClose={() => setShowSearchResults(false)}
+          onVisitSource={(url) => {
+            const pref = localStorage.getItem("60w_source_browser") || "embedded";
+            if (pref === "external") {
+              window.open(url, "_blank", "noopener,noreferrer");
+            } else {
+              setSourceBrowserUrl(url);
+            }
+          }}
+          onAddToCanvas={(card) => {
+            // Signal CanvasView to add a search_card block via custom event
+            window.dispatchEvent(new CustomEvent("60w:add-search-card", { detail: card }));
+          }}
+        />
+      )}
       {showCreate && <CreateModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
       <ProfePanel workspaceId={activeWs?.id ?? null} />
       <ResearchModal
