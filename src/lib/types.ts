@@ -77,3 +77,5 @@ export interface ThemeColors {
 export type Tab = "home" | "canvas" | "prototype" | "kb" | "research" | "youtube";
 
 export type PrototypeMode = "split" | "code" | "preview";
+
+export type WorkspaceFileType = "design" | "document";

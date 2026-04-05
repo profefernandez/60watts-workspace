@@ -50,12 +50,25 @@ export interface CanvasBlock {
   format?: string | null;
 }
 
+export interface WorkspaceFile {
+  id: string;
+  workspace_id: string;
+  name: string;
+  type: "design" | "document";
+  content: string;
+  thumbnail: string | null;
+  created_at: string;
+  updated_at: string;
+  sort_order: number;
+}
+
 export interface Schema {
   workspaces: Workspace[];
   kb_files: KBFile[];
   agent_configs: AgentConfig[];
   user_api_keys: UserApiKey[];
   canvas_blocks: CanvasBlock[];
+  workspace_files: WorkspaceFile[];
 }
 
 // ── Client ──
