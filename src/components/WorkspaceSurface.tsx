@@ -273,6 +273,13 @@ export default function WorkspaceSurface({
                 flexShrink: 0,
               }}
             >
+              {/* Document tab */}
+              <TabButton
+                label="Document"
+                active={activeFile.type === "document"}
+                onClick={() => handleSetType("document")}
+              />
+
               {/* Design Studio tab */}
               <TabButton
                 label="Design Studio"
@@ -285,13 +292,6 @@ export default function WorkspaceSurface({
                 label="HTML Render"
                 active={activeFile.type === "html"}
                 onClick={() => handleSetType("html")}
-              />
-
-              {/* Document tab */}
-              <TabButton
-                label="Document"
-                active={activeFile.type === "document"}
-                onClick={() => handleSetType("document")}
               />
 
               {/* Spacer */}
@@ -531,63 +531,35 @@ const EmptyState: React.FC<EmptyStateProps> = ({
           }}
         >
           <button
-            onClick={() => onCreateFile("design")}
-            style={{
-              ...glassBtn({
-                padding: "12px 24px",
-                fontSize: 15,
-                borderRadius: 14,
-              }),
-              color: C.rg,
-              border: `1px solid rgba(232,168,124,0.25)`,
-              background: `rgba(232,168,124,0.08)`,
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background =
-                `rgba(232,168,124,0.15)`;
-              (e.currentTarget as HTMLButtonElement).style.borderColor =
-                `rgba(232,168,124,0.4)`;
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background =
-                `rgba(232,168,124,0.08)`;
-              (e.currentTarget as HTMLButtonElement).style.borderColor =
-                `rgba(232,168,124,0.25)`;
-            }}
-          >
-            Design Studio
-          </button>
-
-          <button
-            onClick={() => onCreateFile("html")}
-            style={{
-              ...glassBtn({
-                padding: "12px 24px",
-                fontSize: 15,
-                borderRadius: 14,
-              }),
-              color: C.rg,
-              border: `1px solid rgba(232,168,124,0.25)`,
-              background: `rgba(232,168,124,0.08)`,
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background =
-                `rgba(232,168,124,0.15)`;
-              (e.currentTarget as HTMLButtonElement).style.borderColor =
-                `rgba(232,168,124,0.4)`;
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background =
-                `rgba(232,168,124,0.08)`;
-              (e.currentTarget as HTMLButtonElement).style.borderColor =
-                `rgba(232,168,124,0.25)`;
-            }}
-          >
-            HTML Render
-          </button>
-
-          <button
             onClick={() => onCreateFile("document")}
+            style={{
+              ...glassBtn({
+                padding: "12px 24px",
+                fontSize: 15,
+                borderRadius: 14,
+              }),
+              color: C.rg,
+              border: `1px solid rgba(232,168,124,0.25)`,
+              background: `rgba(232,168,124,0.08)`,
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background =
+                `rgba(232,168,124,0.15)`;
+              (e.currentTarget as HTMLButtonElement).style.borderColor =
+                `rgba(232,168,124,0.4)`;
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background =
+                `rgba(232,168,124,0.08)`;
+              (e.currentTarget as HTMLButtonElement).style.borderColor =
+                `rgba(232,168,124,0.25)`;
+            }}
+          >
+            Document
+          </button>
+
+          <button
+            onClick={() => onCreateFile("design")}
             style={{
               ...glassBtn({
                 padding: "12px 24px",
@@ -606,7 +578,30 @@ const EmptyState: React.FC<EmptyStateProps> = ({
               (e.currentTarget as HTMLButtonElement).style.color = C.tx2;
             }}
           >
-            Document
+            Design Studio
+          </button>
+
+          <button
+            onClick={() => onCreateFile("html")}
+            style={{
+              ...glassBtn({
+                padding: "12px 24px",
+                fontSize: 15,
+                borderRadius: 14,
+              }),
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background =
+                C.glassB;
+              (e.currentTarget as HTMLButtonElement).style.color = C.cr;
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background =
+                C.glass;
+              (e.currentTarget as HTMLButtonElement).style.color = C.tx2;
+            }}
+          >
+            HTML Render
           </button>
         </div>
       </div>

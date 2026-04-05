@@ -274,6 +274,14 @@ export const FilePanel: React.FC<FilePanelProps> = ({
                 }}
               >
                 <DropItem
+                  icon={I.file}
+                  label="Document"
+                  onClick={() => {
+                    onCreateFile("document");
+                    setNewDropOpen(false);
+                  }}
+                />
+                <DropItem
                   icon={I.pen}
                   label="Design Studio"
                   onClick={() => {
@@ -286,14 +294,6 @@ export const FilePanel: React.FC<FilePanelProps> = ({
                   label="HTML Render"
                   onClick={() => {
                     onCreateFile("html");
-                    setNewDropOpen(false);
-                  }}
-                />
-                <DropItem
-                  icon={I.file}
-                  label="Document"
-                  onClick={() => {
-                    onCreateFile("document");
                     setNewDropOpen(false);
                   }}
                 />

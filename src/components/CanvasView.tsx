@@ -23,6 +23,10 @@ type CanvasBlockExtended = CanvasBlock & { searchData?: SearchCardData };
 interface Props {
   workspaceId: string;
   onVisitSource?: (url: string) => void;
+  // Controlled mode: when both are provided, CanvasView manages blocks
+  // from the content prop and calls onContentChange instead of the store.
+  content?: string;
+  onContentChange?: (content: string) => void;
 }
 
 type BlockType = "heading" | "subheading" | "text" | "image" | "youtube";
@@ -351,7 +355,8 @@ function extractYouTubeId(url: string): string | null {
 }
 
 // ── Main Canvas View ──
-export default function CanvasView({ workspaceId, onVisitSource }: Props) {
+export default function CanvasView({ workspaceId, onVisitSource, content, onContentChange }: Props) {
+  const isControlled = content !== undefined && onContentChange !== undefined;
   const [blocks, setBlocks] = useState<CanvasBlockExtended[]>([]);
   const [saving, setSaving] = useState(false);
   const [useLocal, setUseLocal] = useState(false);
@@ -389,16 +394,46 @@ export default function CanvasView({ workspaceId, onVisitSource }: Props) {
     return () => window.removeEventListener("60w:add-search-card", handler);
   }, [workspaceId]);
 
+  // Standalone mode: fetch blocks from store on mount
   useEffect(() => {
-    fetchBlocks();
-  }, [fetchBlocks]);
+    if (!isControlled) {
+      fetchBlocks();
+    }
+  }, [isControlled, fetchBlocks]);
+
+  // Controlled mode: sync blocks whenever the content prop changes
+  useEffect(() => {
+    if (!isControlled) return;
+    try {
+      const parsed = JSON.parse(content!) as CanvasBlockExtended[];
+      setBlocks(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      setBlocks([]);
+    }
+    // isControlled is stable for the lifetime of a given usage, so omitting it
+    // from deps is safe. We only want to re-run when content changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content]);
 
   // Debounced auto-save per block
   const handleUpdate = useCallback(
-    (id: string, content: string) => {
-      setBlocks((prev) =>
-        prev.map((b) => (b.id === id ? { ...b, content } : b))
-      );
+    (id: string, blockContent: string) => {
+      setBlocks((prev) => {
+        const updated = prev.map((b) => (b.id === id ? { ...b, content: blockContent } : b));
+
+        if (isControlled) {
+          // Defer to avoid setState-in-render: parent's setFiles during child update
+          queueMicrotask(() => {
+            onContentChange!(JSON.stringify(updated));
+            setSaving(true);
+            setTimeout(() => setSaving(false), 400);
+          });
+        }
+
+        return updated;
+      });
+
+      if (isControlled) return;
 
       if (useLocal) {
         setSaving(true);
@@ -410,7 +445,7 @@ export default function CanvasView({ workspaceId, onVisitSource }: Props) {
       saveTimers.current[id] = setTimeout(async () => {
         try {
           setSaving(true);
-          await updateCanvasBlock(id, { content }, workspaceId);
+          await updateCanvasBlock(id, { content: blockContent }, workspaceId);
         } catch {
           // Silent fail
         } finally {
@@ -418,7 +453,7 @@ export default function CanvasView({ workspaceId, onVisitSource }: Props) {
         }
       }, 1000);
     },
-    [useLocal, workspaceId]
+    [isControlled, onContentChange, useLocal, workspaceId]
   );
 
   // Add new block — Image and YouTube open modals, others create directly
@@ -433,6 +468,24 @@ export default function CanvasView({ workspaceId, onVisitSource }: Props) {
     }
 
     const maxSort = blocks.length > 0 ? Math.max(...blocks.map((b) => b.sort_order)) : 0;
+
+    // Controlled mode: generate local ID and notify parent
+    if (isControlled) {
+      const newBlock: CanvasBlock = {
+        id: `blk-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        workspace_id: workspaceId,
+        type,
+        content: "",
+        sort_order: maxSort + 1,
+      };
+      setBlocks((prev) => {
+        const updated = [...prev, newBlock];
+        queueMicrotask(() => onContentChange!(JSON.stringify(updated)));
+        return updated;
+      });
+      setLastAddedId(newBlock.id);
+      return;
+    }
 
     if (useLocal) {
       const newBlock: CanvasBlock = {
@@ -473,7 +526,14 @@ export default function CanvasView({ workspaceId, onVisitSource }: Props) {
 
   // Delete block
   const handleDelete = async (id: string) => {
-    setBlocks((prev) => prev.filter((b) => b.id !== id));
+    setBlocks((prev) => {
+      const updated = prev.filter((b) => b.id !== id);
+      if (isControlled) {
+        queueMicrotask(() => onContentChange!(JSON.stringify(updated)));
+      }
+      return updated;
+    });
+    if (isControlled) return;
     try {
       await deleteCanvasBlock(id, workspaceId);
     } catch {
@@ -486,6 +546,23 @@ export default function CanvasView({ workspaceId, onVisitSource }: Props) {
     async (imageSource: string) => {
       setShowImageGallery(false);
       const maxSort = blocks.length > 0 ? Math.max(...blocks.map((b) => b.sort_order)) : 0;
+
+      if (isControlled) {
+        const newBlock: CanvasBlock = {
+          id: `blk-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          workspace_id: workspaceId,
+          type: "image",
+          content: imageSource,
+          sort_order: maxSort + 1,
+        };
+        setBlocks((prev) => {
+          const updated = [...prev, newBlock];
+          queueMicrotask(() => onContentChange!(JSON.stringify(updated)));
+          return updated;
+        });
+        return;
+      }
+
       const newBlock: CanvasBlock = {
         id: localId(),
         workspace_id: workspaceId,
@@ -506,7 +583,7 @@ export default function CanvasView({ workspaceId, onVisitSource }: Props) {
         );
       } catch {}
     },
-    [workspaceId, blocks]
+    [isControlled, onContentChange, workspaceId, blocks]
   );
 
   // YouTube insert
@@ -514,6 +591,23 @@ export default function CanvasView({ workspaceId, onVisitSource }: Props) {
     async (youtubeUrl: string) => {
       setShowYouTube(false);
       const maxSort = blocks.length > 0 ? Math.max(...blocks.map((b) => b.sort_order)) : 0;
+
+      if (isControlled) {
+        const newBlock: CanvasBlock = {
+          id: `blk-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          workspace_id: workspaceId,
+          type: "youtube",
+          content: youtubeUrl,
+          sort_order: maxSort + 1,
+        };
+        setBlocks((prev) => {
+          const updated = [...prev, newBlock];
+          queueMicrotask(() => onContentChange!(JSON.stringify(updated)));
+          return updated;
+        });
+        return;
+      }
+
       const newBlock: CanvasBlock = {
         id: localId(),
         workspace_id: workspaceId,
@@ -534,7 +628,7 @@ export default function CanvasView({ workspaceId, onVisitSource }: Props) {
         );
       } catch {}
     },
-    [workspaceId, blocks]
+    [isControlled, onContentChange, workspaceId, blocks]
   );
 
   // Floating toolbar actions
