@@ -10,6 +10,8 @@ import type { CanvasBlock } from "../lib/directus";
 
 interface CanvasEditorProps {
   workspaceId: string;
+  onContextResults?: (inserted: number, suggested: number) => void;
+  onOpenSuggestions?: () => void;
 }
 
 type BlockType = "heading" | "subheading" | "text" | "image" | "youtube";
@@ -48,13 +50,14 @@ const PLACEHOLDER: Record<BlockType, string> = {
   youtube: "dQw4w9WgXcQ",
 };
 
-function CanvasEditor({ workspaceId }: CanvasEditorProps) {
+function CanvasEditor({ workspaceId, onContextResults, onOpenSuggestions }: CanvasEditorProps) {
   const [blocks, setBlocks] = useState<CanvasBlock[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const [ctxLoading, setCtxLoading] = useState(false);
   const editRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const fetchBlocks = useCallback(async () => {
@@ -167,6 +170,69 @@ function CanvasEditor({ workspaceId }: CanvasEditorProps) {
   const handleDragEnd = () => {
     setDragIdx(null);
     setDragOverIdx(null);
+  };
+
+  const triggerContext = async () => {
+    if (ctxLoading || blocks.length === 0) return;
+    setCtxLoading(true);
+    try {
+      const canvasContent = blocks
+        .map((b) => `[${b.type}] ${b.content}`)
+        .join("\n\n");
+
+      const res = await fetch("/api/context", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ canvasContent }),
+      });
+
+      if (!res.ok) throw new Error("Context Engine error");
+
+      const data = await res.json();
+      const inserted = Array.isArray(data.inserted) ? data.inserted : [];
+      const suggestions = Array.isArray(data.suggestions) ? data.suggestions : [];
+
+      for (const item of inserted) {
+        const maxOrder = blocks.length > 0 ? Math.max(...blocks.map((b) => b.sort_order)) : 0;
+        try {
+          const created = await directus.request(
+            createItem("canvas_blocks", {
+              workspace_id: workspaceId,
+              type: "text",
+              content: item.content || "",
+              sort_order: maxOrder + 1,
+            })
+          );
+          setBlocks((prev) => [...prev, created as CanvasBlock]);
+        } catch {
+          // Skip failed inserts
+        }
+      }
+
+      for (const s of suggestions) {
+        try {
+          await directus.request(
+            createItem("context_suggestions", {
+              workspace_id: workspaceId,
+              source_type: s.sourceType || "web",
+              source_id: s.sourceId || "",
+              title: s.title || "Suggestion",
+              content: s.content || "",
+              relevance_note: s.relevanceNote || "",
+              status: "pending",
+            })
+          );
+        } catch {
+          // Skip failed suggestion saves
+        }
+      }
+
+      onContextResults?.(inserted.length, suggestions.length);
+    } catch {
+      // Context request failed silently
+    } finally {
+      setCtxLoading(false);
+    }
   };
 
   const handleTextBlur = (block: CanvasBlock) => {
@@ -410,14 +476,32 @@ function CanvasEditor({ workspaceId }: CanvasEditorProps) {
         <div style={{ width: 1, height: 24, background: C.glassBrd, margin: "0 4px" }} />
 
         <button
-          style={toolbarBtn({ color: C.rg })}
-          onMouseEnter={(e) => { e.currentTarget.style.background = `${C.rg}14`; }}
+          onClick={triggerContext}
+          disabled={ctxLoading || blocks.length === 0}
+          style={toolbarBtn({
+            color: ctxLoading ? C.tx3 : C.rg,
+            cursor: ctxLoading || blocks.length === 0 ? "wait" : "pointer",
+          })}
+          onMouseEnter={(e) => { if (!ctxLoading) e.currentTarget.style.background = `${C.rg}14`; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-          title="Context"
+          title="Context — find supporting material"
         >
-          {I.ctx}
-          <span>Context</span>
+          {ctxLoading ? <span className="spin" style={{ display: "flex" }}>{I.loader}</span> : I.ctx}
+          <span>{ctxLoading ? "Searching…" : "Context"}</span>
         </button>
+
+        {onOpenSuggestions && (
+          <button
+            onClick={onOpenSuggestions}
+            style={toolbarBtn({ color: C.tx2 })}
+            onMouseEnter={(e) => { e.currentTarget.style.background = C.glass; e.currentTarget.style.color = C.cr; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.tx2; }}
+            title="View suggestions"
+          >
+            {I.ctx}
+            <span>Suggestions</span>
+          </button>
+        )}
       </div>
 
       {/* Block list */}

@@ -10,6 +10,10 @@ import { readItems, createItem, aggregate } from "@directus/sdk";
 import CanvasEditor from "./CanvasEditor";
 import KnowledgeBase from "./KnowledgeBase";
 import ProfeChat from "./ProfeChat";
+import SuggestionDrawer from "./SuggestionDrawer";
+import ResearchPanel from "./ResearchPanel";
+import YouTubePanel from "./YouTubePanel";
+import PrototypeStudio from "./PrototypeStudio";
 
 /* ═══════════════════════════════════════════════════════════
    60 WATTS OF CLARITY — v6
@@ -17,13 +21,15 @@ import ProfeChat from "./ProfeChat";
    Obsidian · Rose Gold · Soft Cream · AI: Profé
    ═══════════════════════════════════════════════════════════ */
 
-type ViewTab = "home" | "canvas" | "prototype" | "kb";
+type ViewTab = "home" | "canvas" | "prototype" | "kb" | "research" | "youtube";
 
 const NAV_ITEMS: { id: ViewTab; label: string; icon: React.ReactNode }[] = [
   { id: "home", label: "Home", icon: I.bulb },
   { id: "canvas", label: "Canvas", icon: I.board },
   { id: "prototype", label: "Prototype", icon: I.pen },
   { id: "kb", label: "Knowledge Base", icon: I.db },
+  { id: "research", label: "Research", icon: I.search },
+  { id: "youtube", label: "YouTube", icon: I.yt },
 ];
 
 const VIEW_LABELS: Record<ViewTab, string> = {
@@ -31,6 +37,8 @@ const VIEW_LABELS: Record<ViewTab, string> = {
   canvas: "Canvas",
   prototype: "Prototype Studio",
   kb: "Knowledge Base",
+  research: "Research",
+  youtube: "YouTube",
 };
 
 function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (name: string, desc: string) => void }) {
@@ -74,6 +82,7 @@ export default function AppInner() {
   const [wsLoading, setWsLoading] = useState(true);
   const [wsError, setWsError] = useState<string | null>(null);
   const [showProfe, setShowProfe] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const fetchWorkspaces = useCallback(async () => {
     setWsLoading(true);
@@ -218,22 +227,45 @@ export default function AppInner() {
     }
 
     if (view === "canvas") {
-      return <CanvasEditor workspaceId={activeWs.id} />;
+      return (
+        <CanvasEditor
+          workspaceId={activeWs.id}
+          onOpenSuggestions={() => setShowSuggestions(true)}
+        />
+      );
     }
 
     if (view === "kb") {
       return <KnowledgeBase workspaceId={activeWs.id} />;
     }
 
-    // Prototype Studio placeholder
-    return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16, height: "100%" }}>
-        <h1 style={{ fontFamily: "'Clash Display'", fontSize: 40, fontWeight: 700, color: C.cr, letterSpacing: "-0.03em" }}>
-          {VIEW_LABELS[view]}
-        </h1>
-        <p style={{ fontSize: 18, color: C.tx3 }}>Coming soon</p>
-      </div>
-    );
+    if (view === "prototype") {
+      return <PrototypeStudio workspaceId={activeWs.id} />;
+    }
+
+    if (view === "research") {
+      return (
+        <ResearchPanel
+          workspaceId={activeWs.id}
+          onInsertToCanvas={() => {
+            setView("canvas");
+          }}
+        />
+      );
+    }
+
+    if (view === "youtube") {
+      return (
+        <YouTubePanel
+          workspaceId={activeWs.id}
+          onInsertToCanvas={() => {
+            setView("canvas");
+          }}
+        />
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -369,6 +401,18 @@ export default function AppInner() {
       </button>
 
       <ProfeChat visible={showProfe} onClose={() => setShowProfe(false)} />
+
+      {activeWs && (
+        <SuggestionDrawer
+          workspaceId={activeWs.id}
+          visible={showSuggestions}
+          onClose={() => setShowSuggestions(false)}
+          onInsert={() => {
+            setView("canvas");
+            setShowSuggestions(false);
+          }}
+        />
+      )}
     </div>
   );
 }
