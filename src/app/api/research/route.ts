@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // ── Research Panel API Route ──
 // Uses the user's own API key (passed from client, stored in Directus user_api_keys)
@@ -6,6 +7,15 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const rl = checkRateLimit(`research:${ip}`, 20, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests — please wait a moment" },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.resetIn / 1000)) } }
+      );
+    }
+
     const body = await request.json();
     const { query, apiKey: userApiKey, provider } = body;
 

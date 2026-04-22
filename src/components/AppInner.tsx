@@ -6,7 +6,8 @@ import { I } from "../lib/icons";
 import { useAuth } from "../lib/auth";
 import directus from "../lib/directus";
 import type { Workspace } from "../lib/directus";
-import { readItems, createItem, aggregate } from "@directus/sdk";
+import { readItems, createItem, deleteItem, aggregate } from "@directus/sdk";
+import Settings from "./Settings";
 import CanvasEditor from "./CanvasEditor";
 import KnowledgeBase from "./KnowledgeBase";
 import ProfeChat from "./ProfeChat";
@@ -21,7 +22,7 @@ import PrototypeStudio from "./PrototypeStudio";
    Obsidian · Rose Gold · Soft Cream · AI: Profé
    ═══════════════════════════════════════════════════════════ */
 
-type ViewTab = "home" | "canvas" | "prototype" | "kb" | "research" | "youtube";
+type ViewTab = "home" | "canvas" | "prototype" | "kb" | "research" | "youtube" | "settings";
 
 const NAV_ITEMS: { id: ViewTab; label: string; icon: React.ReactNode }[] = [
   { id: "home", label: "Home", icon: I.bulb },
@@ -30,6 +31,7 @@ const NAV_ITEMS: { id: ViewTab; label: string; icon: React.ReactNode }[] = [
   { id: "kb", label: "Knowledge Base", icon: I.db },
   { id: "research", label: "Research", icon: I.search },
   { id: "youtube", label: "YouTube", icon: I.yt },
+  { id: "settings", label: "Settings", icon: I.wand },
 ];
 
 const VIEW_LABELS: Record<ViewTab, string> = {
@@ -39,6 +41,7 @@ const VIEW_LABELS: Record<ViewTab, string> = {
   kb: "Knowledge Base",
   research: "Research",
   youtube: "YouTube",
+  settings: "Settings",
 };
 
 function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (name: string, desc: string) => void }) {
@@ -83,6 +86,7 @@ export default function AppInner() {
   const [wsError, setWsError] = useState<string | null>(null);
   const [showProfe, setShowProfe] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Workspace | null>(null);
 
   const fetchWorkspaces = useCallback(async () => {
     setWsLoading(true);
@@ -116,6 +120,17 @@ export default function AppInner() {
       fetchWorkspaces();
     } catch (err) {
       console.error("Failed to create workspace:", err);
+    }
+  };
+
+  const handleDeleteWorkspace = async (ws: Workspace) => {
+    try {
+      await directus.request(deleteItem("workspaces", ws.id));
+      if (activeWs?.id === ws.id) setActiveWs(null);
+      setDeleteTarget(null);
+      fetchWorkspaces();
+    } catch (err) {
+      console.error("Failed to delete workspace:", err);
     }
   };
 
@@ -192,9 +207,20 @@ export default function AppInner() {
                   )}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
                     <span style={{ fontSize: 13, color: C.tx4 }}>{fileCounts[ws.id] ?? 0} files</span>
-                    <span style={{ fontSize: 13, color: C.tx4 }}>
-                      {ws.updated_at ? new Date(ws.updated_at).toLocaleDateString() : ""}
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 13, color: C.tx4 }}>
+                        {ws.updated_at ? new Date(ws.updated_at).toLocaleDateString() : ""}
+                      </span>
+                      <span
+                        role="button"
+                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(ws); }}
+                        style={{ color: C.tx4, cursor: "pointer", display: "flex", padding: 2, borderRadius: 4, transition: "color 0.15s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = C.red; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = C.tx4; }}
+                      >
+                        {I.trash}
+                      </span>
+                    </div>
                   </div>
                 </button>
               ))}
@@ -202,6 +228,10 @@ export default function AppInner() {
           )}
         </div>
       );
+    }
+
+    if (view === "settings") {
+      return <Settings user={user} />;
     }
 
     if (!activeWs) {
@@ -382,6 +412,21 @@ export default function AppInner() {
 
       {/* ── Layer 3: Floating Panels ── */}
       {showCreate && <CreateModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
+
+      {deleteTarget && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.6)" }} onClick={() => setDeleteTarget(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ ...glass(), padding: 32, width: 400, maxWidth: "90vw", textAlign: "center" }}>
+            <h3 style={{ fontFamily: "'Clash Display'", fontSize: 22, fontWeight: 700, color: C.cr, margin: "0 0 12px" }}>Delete Workspace?</h3>
+            <p style={{ fontSize: 16, color: C.tx2, marginBottom: 24 }}>
+              &ldquo;{deleteTarget.name}&rdquo; and all its canvas blocks, files, and suggestions will be permanently deleted.
+            </p>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+              <button onClick={() => setDeleteTarget(null)} style={{ padding: "10px 24px", borderRadius: 10, border: `1px solid ${C.glassBrd}`, background: "transparent", color: C.tx2, fontSize: 15, fontFamily: "'Satoshi'", cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => handleDeleteWorkspace(deleteTarget)} style={{ padding: "10px 24px", borderRadius: 10, border: "none", background: C.red, color: "#fff", fontSize: 15, fontWeight: 700, fontFamily: "'Satoshi'", cursor: "pointer" }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Profé FAB */}
       <button

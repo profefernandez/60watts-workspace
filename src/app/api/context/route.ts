@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // ── Context Engine API Route ──
 // Powered by LaunchLemonade — reads canvas + KB, returns inserts and suggestions
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const rl = checkRateLimit(`context:${ip}`, 10, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests — please wait a moment" },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.resetIn / 1000)) } }
+      );
+    }
+
     const body = await request.json();
     const { canvasContent, kbContent, searchQuery } = body;
 

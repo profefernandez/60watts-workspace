@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // ── Profé AI Chat Route ──
 // Powered by LaunchLemonade — trained Profé agent
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const rl = checkRateLimit(`chat:${ip}`, 30, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests — please wait a moment" },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.resetIn / 1000)) } }
+      );
+    }
+
     const body = await request.json();
     const { message, conversationId } = body;
 
