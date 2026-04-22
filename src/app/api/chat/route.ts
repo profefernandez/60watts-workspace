@@ -15,6 +15,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (message.length > 10000) {
+      return NextResponse.json(
+        { error: "Message too long (max 10,000 characters)" },
+        { status: 400 }
+      );
+    }
+
     const apiKey = process.env.LAUNCHLEMONADE_API_KEY;
     const lemonadeId = process.env.LAUNCHLEMONADE_PROFE_ID;
 

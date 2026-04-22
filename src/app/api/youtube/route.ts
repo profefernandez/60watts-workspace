@@ -16,6 +16,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (query.length > 2000) {
+      return NextResponse.json(
+        { error: "Query too long (max 2,000 characters)" },
+        { status: 400 }
+      );
+    }
+
     if (!userApiKey || typeof userApiKey !== "string") {
       return NextResponse.json(
         { error: "API key is required — add your key in Settings" },
