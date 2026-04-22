@@ -45,12 +45,26 @@ export interface CanvasBlock {
   sort_order: number;
 }
 
+export interface ContextSuggestion {
+  id: string;
+  workspace_id: string;
+  source_type: "research" | "kb" | "youtube" | "web";
+  source_id: string;
+  title: string;
+  content: string;
+  relevance_note: string;
+  status: "pending" | "accepted" | "dismissed";
+  created_at: string;
+  applied_at: string | null;
+}
+
 export interface Schema {
   workspaces: Workspace[];
   kb_files: KBFile[];
   agent_configs: AgentConfig[];
   user_api_keys: UserApiKey[];
   canvas_blocks: CanvasBlock[];
+  context_suggestions: ContextSuggestion[];
 }
 
 // ── Client ──

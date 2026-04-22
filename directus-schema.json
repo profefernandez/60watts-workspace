@@ -59,6 +59,17 @@
         "singleton": false
       },
       "schema": { "name": "canvas_blocks" }
+    },
+    {
+      "collection": "context_suggestions",
+      "meta": {
+        "collection": "context_suggestions",
+        "icon": "auto_awesome",
+        "note": "Context Engine suggestions — material not inserted into canvas, saved for user review",
+        "sort_field": null,
+        "singleton": false
+      },
+      "schema": { "name": "context_suggestions" }
     }
   ],
   "fields": [
@@ -253,6 +264,86 @@
       "type": "integer",
       "meta": { "interface": "input", "width": "half" },
       "schema": { "default_value": 0 }
+    },
+
+    {
+      "collection": "context_suggestions",
+      "field": "id",
+      "type": "uuid",
+      "meta": { "interface": "input", "special": ["uuid"], "required": true },
+      "schema": { "is_primary_key": true, "has_auto_increment": false }
+    },
+    {
+      "collection": "context_suggestions",
+      "field": "workspace_id",
+      "type": "uuid",
+      "meta": { "interface": "select-dropdown-m2o", "special": ["m2o"], "required": true },
+      "schema": { "foreign_key_table": "workspaces", "foreign_key_column": "id" }
+    },
+    {
+      "collection": "context_suggestions",
+      "field": "source_type",
+      "type": "string",
+      "meta": { "interface": "select-dropdown", "width": "half", "options": { "choices": [
+        { "text": "Research", "value": "research" },
+        { "text": "Knowledge Base", "value": "kb" },
+        { "text": "YouTube", "value": "youtube" },
+        { "text": "Web", "value": "web" }
+      ]}},
+      "schema": { "max_length": 20 }
+    },
+    {
+      "collection": "context_suggestions",
+      "field": "source_id",
+      "type": "string",
+      "meta": { "interface": "input", "width": "half", "note": "ID or URL of the original source" },
+      "schema": { "max_length": 500 }
+    },
+    {
+      "collection": "context_suggestions",
+      "field": "title",
+      "type": "string",
+      "meta": { "interface": "input", "width": "full" },
+      "schema": { "max_length": 500 }
+    },
+    {
+      "collection": "context_suggestions",
+      "field": "content",
+      "type": "text",
+      "meta": { "interface": "input-multiline", "width": "full" },
+      "schema": {}
+    },
+    {
+      "collection": "context_suggestions",
+      "field": "relevance_note",
+      "type": "text",
+      "meta": { "interface": "input-multiline", "width": "full", "note": "AI-generated explanation of why this is relevant" },
+      "schema": {}
+    },
+    {
+      "collection": "context_suggestions",
+      "field": "status",
+      "type": "string",
+      "meta": { "interface": "select-dropdown", "width": "half", "options": { "choices": [
+        { "text": "Pending", "value": "pending" },
+        { "text": "Accepted", "value": "accepted" },
+        { "text": "Dismissed", "value": "dismissed" }
+      ]}},
+      "schema": { "max_length": 20, "default_value": "pending" }
+    },
+    {
+      "collection": "context_suggestions",
+      "field": "created_at",
+      "type": "timestamp",
+      "meta": { "interface": "datetime", "special": ["date-created"], "readonly": true },
+      "schema": {}
+    },
+    {
+      "collection": "context_suggestions",
+      "field": "applied_at",
+      "type": "timestamp",
+      "meta": { "interface": "datetime", "width": "half" },
+      "schema": {}
     }
   ],
   "relations": [
@@ -283,6 +374,11 @@
     },
     {
       "collection": "canvas_blocks",
+      "field": "workspace_id",
+      "related_collection": "workspaces"
+    },
+    {
+      "collection": "context_suggestions",
       "field": "workspace_id",
       "related_collection": "workspaces"
     }

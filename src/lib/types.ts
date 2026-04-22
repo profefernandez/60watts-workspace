@@ -58,6 +58,36 @@ export interface ThemeColors {
   accent: string; accentText: string;
 }
 
+export interface ContextRequest {
+  workspaceId: string;
+  canvasContent: string;
+  searchQuery?: string;
+  sources: ContextSource[];
+}
+
+export type ContextSource = "canvas" | "kb" | "research" | "youtube";
+
+export interface ContextResult {
+  inserted: ContextInsert[];
+  suggestions: ContextSuggestionItem[];
+}
+
+export interface ContextInsert {
+  blockId: string;
+  content: string;
+  sourceType: ContextSource;
+  sourceTitle: string;
+}
+
+export interface ContextSuggestionItem {
+  id: string;
+  sourceType: ContextSource;
+  sourceId: string;
+  title: string;
+  content: string;
+  relevanceNote: string;
+}
+
 export type Tab = "home" | "canvas" | "prototype" | "kb" | "research" | "youtube";
 
 export type PrototypeMode = "split" | "code" | "preview";

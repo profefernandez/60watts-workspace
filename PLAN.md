@@ -87,6 +87,163 @@ work. The three core tools are functional and connected to Directus.
 
 ---
 
+## Phase 2.5: Context Engine (Hallmark Feature)
+
+The Context button is the platform's signature capability. When pressed, the AI reads
+the user's current document, understands what they're writing about, then
+automatically scans every available source — Knowledge Base files, web research,
+YouTube videos, and previous searches — to find material that supports or elevates
+the writing. Content that fits gets inserted directly into the document. Everything
+else is saved as **suggestions** for the user to review later.
+
+Profé can also trigger context searches from chat. The Context Engine is the shared
+intelligence layer underneath both the button and the agent.
+
+### How It Works (User Flow)
+
+```
+User is writing an article in Canvas
+         │
+         ▼
+    Presses Ctx ⚡ button (or Profé triggers it)
+         │
+         ▼
+   ┌─────────────────────────────────────────┐
+   │        Context Engine (server)          │
+   │                                         │
+   │  1. Read all canvas blocks → build      │
+   │     "document snapshot" (topic, tone,   │
+   │     structure, gaps)                    │
+   │                                         │
+   │  2. Scan sources in parallel:           │
+   │     ├─ KB files (text content)          │
+   │     ├─ Web research (Anthropic +        │
+   │     │  web_search tool)                 │
+   │     ├─ YouTube (relevant videos)        │
+   │     └─ Previous search history          │
+   │                                         │
+   │  3. AI evaluates each finding:          │
+   │     ├─ HIGH relevance → insert into     │
+   │     │  canvas as new block              │
+   │     └─ MEDIUM relevance → save as       │
+   │        suggestion for later review      │
+   │     (LOW relevance → discard)           │
+   │                                         │
+   │  4. Return results to client            │
+   └─────────────────────────────────────────┘
+         │
+         ▼
+   Canvas gets new blocks inserted
+   Suggestion Drawer gets new items
+```
+
+### API Design
+
+One new API route: `POST /api/context`
+
+**Request:**
+```json
+{
+  "workspaceId": "uuid",
+  "canvasContent": "concatenated text of all canvas blocks",
+  "searchQuery": "optional — user's search bar text",
+  "sources": ["canvas", "kb", "research", "youtube"]
+}
+```
+
+**Response:**
+```json
+{
+  "inserted": [
+    {
+      "blockId": "generated-uuid",
+      "content": "Supporting paragraph from source...",
+      "sourceType": "research",
+      "sourceTitle": "Study on X (2024)"
+    }
+  ],
+  "suggestions": [
+    {
+      "id": "generated-uuid",
+      "sourceType": "kb",
+      "sourceId": "file-uuid",
+      "title": "Related KB Document",
+      "content": "Excerpt from KB file...",
+      "relevanceNote": "This discusses the same methodology in §3"
+    }
+  ]
+}
+```
+
+The route orchestrates multiple upstream calls: reads KB files from Directus,
+calls Anthropic with web_search for fresh research, calls the YouTube search
+logic, then uses a final AI pass to evaluate and sort everything by relevance.
+
+### API Cost Model
+
+A single context press makes **1 Anthropic API call** that uses web_search (which
+is the same pattern the existing research and YouTube routes already use). The
+KB and canvas content are read from Directus (free). The evaluation/sorting is
+done in the same Anthropic call's system prompt. So the cost per press is
+roughly equivalent to one research query — no additional API keys needed beyond
+`ANTHROPIC_API_KEY`.
+
+### Build Tasks
+
+| # | Task | Files | Notes |
+|---|------|-------|-------|
+| C1 | Create `/api/context` route | `src/app/api/context/route.ts` (new) | POST handler. Accepts `workspaceId`, `canvasContent`, optional `searchQuery`, and `sources` array. Reads KB files from Directus, builds a combined prompt, calls Anthropic with web_search tool, parses response into `inserted` and `suggestions` arrays. |
+| C2 | Build Context Engine prompt | Inside `/api/context/route.ts` | System prompt instructs the AI to: (1) analyze the document's topic, tone, and gaps, (2) evaluate each source against the document, (3) classify findings as INSERT (high relevance, directly supports a point), SUGGEST (medium relevance, tangentially useful), or DISCARD. Return structured JSON. |
+| C3 | Add Ctx button to Canvas toolbar | `src/components/CanvasEditor.tsx` | The `I.ctx` icon already exists. Button triggers context fetch, shows a loading shimmer across the canvas while working. |
+| C4 | Build insert logic | `src/components/CanvasEditor.tsx` | On context response, create new `canvas_blocks` in Directus for each `inserted` item. Place them at contextually appropriate positions (after the block they relate to, determined by AI). |
+| C5 | Build Suggestion Drawer | `src/components/SuggestionDrawer.tsx` (new) | Slide-out panel showing all `context_suggestions` for the workspace. Each card shows title, excerpt, source type icon, and relevance note. Actions: "Insert" (moves to canvas), "Dismiss" (marks dismissed), "Open Source" (links to original). Badge count on the drawer toggle. |
+| C6 | Save suggestions to Directus | `SuggestionDrawer.tsx` + `/api/context/route.ts` | `context_suggestions` collection persists suggestions across sessions. User can return days later and still see unused material. |
+| C7 | Wire Ctx to Profé | `src/components/ProfeChat.tsx` | Add a `/context` slash command or "Search Context" button in chat. Profé can trigger a context scan and discuss the results conversationally. |
+| C8 | Add search bar context trigger | `src/components/CanvasEditor.tsx` | When user types a search query and presses the Ctx button, the query is sent as `searchQuery` to `/api/context`. The AI uses it as a focused search lens on top of the document analysis. |
+| C9 | KB file text extraction | `/api/context/route.ts` | For KB files that are PDFs or documents, extract text content via Directus file download + text parsing. For images, skip (or describe via AI vision in a future phase). |
+
+### Directus Schema
+
+New collection: `context_suggestions`
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | uuid | Primary key |
+| `workspace_id` | uuid → workspaces | Which workspace this belongs to |
+| `source_type` | string | `research`, `kb`, `youtube`, `web` |
+| `source_id` | string | URL, file ID, or video ID of the original source |
+| `title` | string | Human-readable title |
+| `content` | text | The actual content/excerpt |
+| `relevance_note` | text | AI-generated explanation of why this might be useful |
+| `status` | string | `pending`, `accepted`, `dismissed` |
+| `created_at` | timestamp | Auto-set |
+| `applied_at` | timestamp | Set when user inserts into canvas |
+
+This collection and its types have already been added to `directus-schema.json`,
+`src/lib/directus.ts`, and `src/lib/types.ts` as part of this plan.
+
+### How Profé and Context Engine Interact
+
+Profé (the chat agent) and the Context Engine are **complementary, not redundant**:
+
+- **Context Engine** is automatic and document-focused. It reads the canvas,
+  scans sources, and inserts/suggests material without the user needing to
+  articulate what they need. It answers: "What would make this document better?"
+
+- **Profé** is conversational and user-directed. The user asks questions, gets
+  explanations, requests rewrites. It answers: "What does the user want to know?"
+
+- **Together:** Profé can trigger context scans ("Let me find some sources for
+  your argument in paragraph 3") and can discuss the suggestions the Context
+  Engine found ("I found 4 relevant studies — want me to summarize them?").
+
+**Phase 2.5 outcome:** The Context button is functional. Users press it while
+writing and get relevant material auto-inserted plus a drawer of suggestions.
+Profé can trigger context scans from chat. Unused material persists in Directus
+for later review.
+
+---
+
 ## Phase 3: Research, Media & Prototype Studio
 
 Add the remaining workspace panels and connect the existing API routes.
@@ -172,7 +329,15 @@ Phase 2 (core features)     ── depends on Phase 1
   ├─ 2.2 Knowledge Base     ── needs CSP fix (1.2 #4) for Directus assets
   └─ 2.3 Profé chat         ── needs auth on API routes (1.2 #5)
 
-Phase 3 (extended features)  ── depends on Phase 2
+Phase 2.5 (Context Engine)  ── depends on Phase 2 (Canvas + KB + Profé)
+  ├─ C1–C2 API route        ── needs Canvas (2.1) for document reading
+  ├─ C3–C4 Ctx button       ── needs Canvas toolbar (2.1 #12)
+  ├─ C5–C6 Suggestions      ── needs Directus context_suggestions collection
+  ├─ C7 Profé integration   ── needs Profé chat (2.3)
+  ├─ C8 Search bar trigger  ── needs Canvas + Ctx API
+  └─ C9 KB text extraction  ── needs KB file access (2.2)
+
+Phase 3 (extended features)  ── depends on Phase 2, parallel with 2.5
   ├─ 3.1 Research panel      ── needs Profé pattern (2.3) + Canvas (2.1) for insert
   ├─ 3.2 YouTube panel       ── same as Research
   └─ 3.3 Prototype Studio    ── independent of other Phase 3 items
@@ -190,5 +355,6 @@ Phase 4 (hardening)          ── depends on Phase 2, parallel with Phase 3
 |------|--------------|----------------|
 | Phase 1 | 0 | `.env.example`, `README.md`, `CLAUDE.md`, `next.config.js`, 3 API routes, `types.ts`, `directus.ts`, `icons.tsx`, `AppInner.tsx` |
 | Phase 2 | 3 (`CanvasEditor`, `KnowledgeBase`, `ProfeChat`) | `AppInner.tsx`, `/api/chat/route.ts` |
+| Phase 2.5 | 2 (`/api/context/route.ts`, `SuggestionDrawer.tsx`) | `CanvasEditor.tsx`, `ProfeChat.tsx` |
 | Phase 3 | 3 (`ResearchPanel`, `YouTubePanel`, `PrototypeStudio`) | `AppInner.tsx` |
 | Phase 4 | 3 (`ci.yml`, `deploy.yml`, `Settings.tsx`) | API routes, `package.json`, `AppInner.tsx` |

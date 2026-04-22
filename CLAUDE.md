@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-60 Watts of Clarity — a self-hosted AI workspace platform for non-technical professionals. Built by Jason Fernandez, MA, LMSW. Target features: Canvas (block editor), Prototype Studio (live code preview), Knowledge Base (file management), and Profé (floating AI chat assistant). See `PLAN.md` for the build-out roadmap.
+60 Watts of Clarity — a self-hosted AI workspace platform for non-technical professionals. Built by Jason Fernandez, MA, LMSW. Target features: Canvas (block editor), Prototype Studio (live code preview), Knowledge Base (file management), Profé (floating AI chat assistant), and the **Context Engine** (hallmark feature — AI-powered contextual research that reads your document and automatically finds supporting material). See `PLAN.md` for the build-out roadmap.
 
 ## Commands
 
@@ -50,6 +50,7 @@ Defined in `directus-schema.json` and typed in `src/lib/directus.ts`:
 - `workspaces` — User workspaces (name, description, user_id → directus_users)
 - `canvas_blocks` — Block content per workspace (heading, subheading, text, image, youtube + sort_order)
 - `kb_files` — Knowledge Base files per workspace (file → directus_files, category)
+- `context_suggestions` — Context Engine output: material the AI found relevant but didn't auto-insert (source_type, content, relevance_note, status: pending/accepted/dismissed)
 - `agent_configs` — AI agent configurations per workspace (provider, agent_id, display_name, is_active)
 - `user_api_keys` — User-provided API keys (user_id → directus_users, provider, hashed api_key)
 
@@ -58,6 +59,7 @@ Defined in `directus-schema.json` and typed in `src/lib/directus.ts`:
 - `chat/route.ts` — Profé AI proxy. Uses `ANTHROPIC_API_KEY` env var. Supports pluggable `AI_PROVIDER` (currently "anthropic", LaunchLemonade planned). **Not yet connected to frontend.**
 - `research/route.ts` — Research panel. Uses Claude with `web_search` tool to return structured JSON results. **Not yet connected to frontend.**
 - `youtube/route.ts` — YouTube search via Claude + web_search (not the official YouTube Data API). **Not yet connected to frontend.**
+- `context/route.ts` — **(Planned)** Context Engine. Reads canvas content + KB files, calls Anthropic with web_search, evaluates findings by relevance, returns inserts + suggestions. See `PLAN.md` Phase 2.5.
 
 ### Current Implementation Status
 
@@ -69,6 +71,7 @@ Defined in `directus-schema.json` and typed in `src/lib/directus.ts`:
 | Canvas block editor | Directus collection ready | Placeholder only |
 | Knowledge Base file UI | Directus collection ready | Placeholder only |
 | Profé AI chat | API route ready | Not built |
+| **Context Engine** | Schema + types ready | Not built |
 | Research panel | API route ready | Not built |
 | YouTube panel | API route ready | Not built |
 | Prototype Studio | — | Not built |
