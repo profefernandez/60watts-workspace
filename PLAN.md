@@ -72,13 +72,19 @@ handles upload/download via its `/assets/` endpoint.
 
 ### 2.3 Profé AI Chat Panel
 
-The `/api/chat` route is fully functional. This phase adds the floating chat UI.
+Profé is powered by **LaunchLemonade** — a trained agent built in their no-code
+platform, called via `POST https://api.launchlemonade.app/v1/chat`. The `/api/chat`
+route already supports both LaunchLemonade (primary) and Anthropic (fallback).
+
+LaunchLemonade maintains conversation context via `conversation_id`, so multi-turn
+chat works natively. The Profé agent in LaunchLemonade can be trained with custom
+knowledge, ethical guardrails, and brand voice without changing app code.
 
 | # | Task | Files | Notes |
 |---|------|-------|-------|
-| 19 | Create `ProfeChat` component | `src/components/ProfeChat.tsx` (new) | Floating panel (bottom-right), toggleable via a FAB button. Message list + input. Streams or displays AI responses. Styled with the `ai*` color tokens from `ThemeColors`. |
-| 20 | Add chat message rendering | Inside `ProfeChat.tsx` | User messages right-aligned, assistant messages left-aligned. Support markdown rendering in assistant responses (code blocks, lists, bold). |
-| 21 | Add KB context injection | `ProfeChat.tsx`, `/api/chat/route.ts` | Allow user to toggle "Use Knowledge Base" — when on, fetch text content of workspace KB files and inject as context in the system prompt. This makes Profé workspace-aware. |
+| 19 | Create `ProfeChat` component | `src/components/ProfeChat.tsx` (new) | Floating panel (bottom-right), toggleable via a FAB button. Message list + input. Calls `/api/chat` which routes to LaunchLemonade. Track `conversationId` in state for multi-turn context. Styled with the `ai*` color tokens from `ThemeColors`. |
+| 20 | Add chat message rendering | Inside `ProfeChat.tsx` | User messages right-aligned, assistant messages left-aligned. LaunchLemonade returns markdown — support rendering code blocks, lists, bold. |
+| 21 | Add KB context injection | `ProfeChat.tsx`, `/api/chat/route.ts` | Allow user to toggle "Use Knowledge Base" — when on, fetch text content of workspace KB files and prepend as context in the message. The LaunchLemonade agent's own training handles its personality and guardrails; KB context just adds workspace-specific documents. |
 | 22 | Mount Profé in AppInner | `src/components/AppInner.tsx` | Render `<ProfeChat />` as a fixed-position overlay available on all views. Add the sparkle FAB button to toggle it. |
 
 **Phase 2 outcome:** Users can create workspaces, build canvas documents with
@@ -98,6 +104,22 @@ else is saved as **suggestions** for the user to review later.
 
 Profé can also trigger context searches from chat. The Context Engine is the shared
 intelligence layer underneath both the button and the agent.
+
+### Provider Architecture
+
+The Context Engine uses **two providers** in a single request:
+
+- **Anthropic (web_search tool)** — for finding fresh online sources. This is the
+  same Claude + `web_search_20250305` tool that the existing `/api/research` and
+  `/api/youtube` routes already use. It's a software-specific capability that
+  LaunchLemonade doesn't expose directly.
+
+- **LaunchLemonade (Profé agent)** — for evaluating, sorting, and writing the
+  contextual insertions. The trained Profé agent understands the user's brand voice,
+  workspace context, and ethical guardrails. It receives the raw findings from
+  Anthropic + KB files and decides what gets inserted vs. suggested.
+
+This split means: Anthropic does the searching, Profé does the thinking.
 
 ### How It Works (User Flow)
 
@@ -181,19 +203,27 @@ logic, then uses a final AI pass to evaluate and sort everything by relevance.
 
 ### API Cost Model
 
-A single context press makes **1 Anthropic API call** that uses web_search (which
-is the same pattern the existing research and YouTube routes already use). The
-KB and canvas content are read from Directus (free). The evaluation/sorting is
-done in the same Anthropic call's system prompt. So the cost per press is
-roughly equivalent to one research query — no additional API keys needed beyond
-`ANTHROPIC_API_KEY`.
+A single context press makes:
+
+- **1 Anthropic API call** with web_search tool — to gather fresh online sources
+  (same pattern as the existing `/api/research` route). Cost: ~$0.01-0.03.
+- **1 LaunchLemonade API call** — to evaluate findings, sort by relevance, and
+  write contextual insertions in the user's voice. Cost: per your LaunchLemonade
+  plan's token pricing.
+- **0 cost** for KB and canvas reads — those are Directus queries.
+
+Two API keys are needed: `ANTHROPIC_API_KEY` (for web search) and
+`LAUNCHLEMONADE_API_KEY` + `LAUNCHLEMONADE_CONTEXT_ID` (for the evaluation agent).
+The Context Engine can optionally use a separate LaunchLemonade agent
+(`LAUNCHLEMONADE_CONTEXT_ID`) trained specifically for context evaluation, or
+reuse the Profé agent (`LAUNCHLEMONADE_PROFE_ID`).
 
 ### Build Tasks
 
 | # | Task | Files | Notes |
 |---|------|-------|-------|
-| C1 | Create `/api/context` route | `src/app/api/context/route.ts` (new) | POST handler. Accepts `workspaceId`, `canvasContent`, optional `searchQuery`, and `sources` array. Reads KB files from Directus, builds a combined prompt, calls Anthropic with web_search tool, parses response into `inserted` and `suggestions` arrays. |
-| C2 | Build Context Engine prompt | Inside `/api/context/route.ts` | System prompt instructs the AI to: (1) analyze the document's topic, tone, and gaps, (2) evaluate each source against the document, (3) classify findings as INSERT (high relevance, directly supports a point), SUGGEST (medium relevance, tangentially useful), or DISCARD. Return structured JSON. |
+| C1 | Create `/api/context` route | `src/app/api/context/route.ts` (new) | POST handler. Accepts `workspaceId`, `canvasContent`, optional `searchQuery`, and `sources` array. Step 1: reads KB files from Directus. Step 2: calls Anthropic with web_search tool to gather online sources. Step 3: sends all gathered material + canvas content to LaunchLemonade (Profé or a dedicated Context agent) for evaluation and sorting. Returns `inserted` and `suggestions` arrays. |
+| C2 | Build Context Engine prompt | Inside `/api/context/route.ts` | The LaunchLemonade agent receives gathered material and the canvas snapshot. It evaluates each finding and classifies as INSERT (high relevance), SUGGEST (medium), or DISCARD (low). The agent's training in LaunchLemonade handles brand voice, ethical guardrails, and writing style. The route parses the agent's response into structured JSON. |
 | C3 | Add Ctx button to Canvas toolbar | `src/components/CanvasEditor.tsx` | The `I.ctx` icon already exists. Button triggers context fetch, shows a loading shimmer across the canvas while working. |
 | C4 | Build insert logic | `src/components/CanvasEditor.tsx` | On context response, create new `canvas_blocks` in Directus for each `inserted` item. Place them at contextually appropriate positions (after the block they relate to, determined by AI). |
 | C5 | Build Suggestion Drawer | `src/components/SuggestionDrawer.tsx` (new) | Slide-out panel showing all `context_suggestions` for the workspace. Each card shows title, excerpt, source type icon, and relevance note. Actions: "Insert" (moves to canvas), "Dismiss" (marks dismissed), "Open Source" (links to original). Badge count on the drawer toggle. |
@@ -224,18 +254,33 @@ This collection and its types have already been added to `directus-schema.json`,
 
 ### How Profé and Context Engine Interact
 
-Profé (the chat agent) and the Context Engine are **complementary, not redundant**:
+Both are powered by **LaunchLemonade agents** — they may be the same agent or
+separate agents trained for different purposes. They are **complementary**:
 
 - **Context Engine** is automatic and document-focused. It reads the canvas,
-  scans sources, and inserts/suggests material without the user needing to
-  articulate what they need. It answers: "What would make this document better?"
+  uses Anthropic's web_search to gather sources, then sends everything to the
+  LaunchLemonade agent for evaluation. It answers: "What would make this
+  document better?"
 
 - **Profé** is conversational and user-directed. The user asks questions, gets
   explanations, requests rewrites. It answers: "What does the user want to know?"
+  Profé's personality, guardrails, and knowledge are configured in LaunchLemonade's
+  no-code builder — no code changes needed to adjust its behavior.
 
 - **Together:** Profé can trigger context scans ("Let me find some sources for
   your argument in paragraph 3") and can discuss the suggestions the Context
   Engine found ("I found 4 relevant studies — want me to summarize them?").
+  Both share the same LaunchLemonade `conversation_id` so context carries over.
+
+### API Keys Summary
+
+| Key | What it powers | Required |
+|-----|---------------|----------|
+| `LAUNCHLEMONADE_API_KEY` | Auth for all LaunchLemonade API calls | Yes |
+| `LAUNCHLEMONADE_PROFE_ID` | The Profé chat agent (lemonade_id) | Yes |
+| `LAUNCHLEMONADE_CONTEXT_ID` | Optional separate Context Engine agent | No (falls back to Profé) |
+| `ANTHROPIC_API_KEY` | Web search in Research, YouTube, and Context Engine | Yes |
+| `ANTHROPIC_MODEL` | Which Claude model for web search calls | No (defaults to claude-sonnet-4-20250514) |
 
 **Phase 2.5 outcome:** The Context button is functional. Users press it while
 writing and get relevant material auto-inserted plus a drawer of suggestions.
@@ -301,8 +346,8 @@ Production readiness: CI/CD, rate limiting, observability, and user self-service
 | # | Task | Files | Notes |
 |---|------|-------|-------|
 | 37 | Build Settings page | `src/components/Settings.tsx` (new) | User profile info, theme toggle (dark/light — `DK`/`LT` are already defined), and API key management. |
-| 38 | Wire `user_api_keys` collection | Settings page + API routes | Let users store their own Anthropic key. API routes check for a user key first, fall back to server env key. Keys stored hashed in Directus. |
-| 39 | Wire `agent_configs` collection | Settings page or workspace settings | Let users configure AI agents per workspace (provider, agent ID, display name, active toggle). Prep for LaunchLemonade integration. |
+| 38 | Wire `user_api_keys` collection | Settings page + API routes | Let users store their own LaunchLemonade or Anthropic keys. API routes check for a user key first, fall back to server env key. Keys stored hashed in Directus. |
+| 39 | Wire `agent_configs` collection | Settings page or workspace settings | Let users configure LaunchLemonade agents per workspace (lemonade_id, display name, active toggle). Different workspaces can use different trained agents. |
 
 ### 4.4 Content Safety & Sanitization
 

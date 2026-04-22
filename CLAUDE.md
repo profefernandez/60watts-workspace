@@ -35,7 +35,7 @@ Directus runs on `http://localhost:8055`. The schema is defined in `directus-sch
 - `src/components/ErrorBoundary.tsx` — React error boundary with restart fallback
 - `src/lib/` — Shared module barrel:
   - `auth.tsx` — `AuthProvider` context + `useAuth()` hook (Directus session management)
-  - `directus.ts` — Directus SDK client + collection type definitions (`Workspace`, `KBFile`, `AgentConfig`, `UserApiKey`, `CanvasBlock`)
+  - `directus.ts` — Directus SDK client + collection type definitions (`Workspace`, `KBFile`, `AgentConfig`, `UserApiKey`, `CanvasBlock`, `ContextSuggestion`)
   - `colors.ts` — `C` (raw palette), `DK` (dark theme), `LT` (light theme) objects
   - `styles.ts` — `glass()`, `glassBtn()`, `toolbarBtn()` style helper functions (return CSSProperties)
   - `helpers.ts` — `uid()`, `sanitize()`, `sanitizeUrl()`, `fileIcon()`, `fileCat()`, `fmtSz()`
@@ -56,10 +56,10 @@ Defined in `directus-schema.json` and typed in `src/lib/directus.ts`:
 
 ### API Routes (server-side, `/src/app/api/`)
 
-- `chat/route.ts` — Profé AI proxy. Uses `ANTHROPIC_API_KEY` env var. Supports pluggable `AI_PROVIDER` (currently "anthropic", LaunchLemonade planned). **Not yet connected to frontend.**
-- `research/route.ts` — Research panel. Uses Claude with `web_search` tool to return structured JSON results. **Not yet connected to frontend.**
-- `youtube/route.ts` — YouTube search via Claude + web_search (not the official YouTube Data API). **Not yet connected to frontend.**
-- `context/route.ts` — **(Planned)** Context Engine. Reads canvas content + KB files, calls Anthropic with web_search, evaluates findings by relevance, returns inserts + suggestions. See `PLAN.md` Phase 2.5.
+- `chat/route.ts` — Profé AI proxy. **Primary: LaunchLemonade** (`AI_PROVIDER=launchlemonade`). Calls the trained Profé agent via `POST https://api.launchlemonade.app/v1/chat`. Anthropic available as fallback (`AI_PROVIDER=anthropic`). **Not yet connected to frontend.**
+- `research/route.ts` — Research panel. Uses **Anthropic** Claude with `web_search` tool (software-specific capability). **Not yet connected to frontend.**
+- `youtube/route.ts` — YouTube search via **Anthropic** Claude + web_search. **Not yet connected to frontend.**
+- `context/route.ts` — **(Planned)** Context Engine. Uses Anthropic for web search gathering, then **LaunchLemonade** for evaluation and contextual insertion. See `PLAN.md` Phase 2.5.
 
 ### Current Implementation Status
 
@@ -70,7 +70,7 @@ Defined in `directus-schema.json` and typed in `src/lib/directus.ts`:
 | KB file counts on workspace cards | Done | Done |
 | Canvas block editor | Directus collection ready | Placeholder only |
 | Knowledge Base file UI | Directus collection ready | Placeholder only |
-| Profé AI chat | API route ready | Not built |
+| Profé AI chat (LaunchLemonade) | API route ready | Not built |
 | **Context Engine** | Schema + types ready | Not built |
 | Research panel | API route ready | Not built |
 | YouTube panel | API route ready | Not built |
@@ -82,9 +82,12 @@ Defined in `directus-schema.json` and typed in `src/lib/directus.ts`:
 ### Environment Variables
 
 - `NEXT_PUBLIC_DIRECTUS_URL` — Directus URL (default: `http://localhost:8055`)
-- `ANTHROPIC_API_KEY` — Required for Profé chat, research, and YouTube search
+- `AI_PROVIDER` — `"launchlemonade"` (default) or `"anthropic"` (fallback)
+- `LAUNCHLEMONADE_API_KEY` — Required for Profé chat and Context Engine
+- `LAUNCHLEMONADE_PROFE_ID` — The Profé agent's lemonade_id in LaunchLemonade
+- `LAUNCHLEMONADE_CONTEXT_ID` — Optional separate Context Engine agent (falls back to Profé)
+- `ANTHROPIC_API_KEY` — Required for research, YouTube search, and Context Engine web search
 - `ANTHROPIC_MODEL` — Optional, defaults to `claude-sonnet-4-20250514`
-- `AI_PROVIDER` — Optional, defaults to `"anthropic"`
 
 ## Design System — NON-NEGOTIABLE
 
