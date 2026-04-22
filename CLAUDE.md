@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-60 Watts of Clarity — a self-hosted AI workspace platform for non-technical professionals. Built by Jason Fernandez, MA, LMSW. Features Canvas (block editor), Prototype Studio (live code preview), Knowledge Base (file management), and Profé (floating AI chat assistant).
+60 Watts of Clarity — a self-hosted AI workspace platform for non-technical professionals. Built by Jason Fernandez, MA, LMSW. Target features: Canvas (block editor), Prototype Studio (live code preview), Knowledge Base (file management), and Profé (floating AI chat assistant). See `PLAN.md` for the build-out roadmap.
 
 ## Commands
 
@@ -15,15 +15,27 @@ npm run lint         # ESLint
 npm run type-check   # TypeScript checking (tsc --noEmit)
 ```
 
+## Infrastructure
+
+```bash
+docker compose up -d   # Start Directus + Postgres
+```
+
+Directus runs on `http://localhost:8055`. The schema is defined in `directus-schema.json`. The Next.js frontend connects via `NEXT_PUBLIC_DIRECTUS_URL`.
+
 ## Architecture
 
-**Next.js 15 App Router** with React 18, TypeScript, Tailwind CSS 3.
+**Next.js 15 App Router** with React 18, TypeScript, Tailwind CSS 3. **Directus 11** as headless CMS / backend (Postgres, REST API, file storage, auth).
 
 ### Key Structure
 
-- `src/app/page.tsx` — Entry point, wraps `AppInner` in `ErrorBoundary`
-- `src/components/AppInner.tsx` — **The monolithic v6 prototype.** Contains the entire UI: sidebar nav, Canvas editor, Prototype Studio, Knowledge Base, Profé AI panel, Research modal, YouTube modal. This file is ~2000+ lines and is considered the "loved" design — **do not refactor or restyle it** without explicit permission.
+- `src/app/page.tsx` — Entry point, wraps `AppInner` in `ErrorBoundary` → `AuthProvider` → `AuthGate`
+- `src/components/AppInner.tsx` — Main workspace shell (~470 lines). Contains sidebar nav, top bar, workspace grid (Home view), and placeholder views for Canvas, Prototype, and Knowledge Base. Feature panels are being built out per `PLAN.md`.
+- `src/components/LoginPage.tsx` — Email/password login form (Directus auth)
+- `src/components/ErrorBoundary.tsx` — React error boundary with restart fallback
 - `src/lib/` — Shared module barrel:
+  - `auth.tsx` — `AuthProvider` context + `useAuth()` hook (Directus session management)
+  - `directus.ts` — Directus SDK client + collection type definitions (`Workspace`, `KBFile`, `AgentConfig`, `UserApiKey`, `CanvasBlock`)
   - `colors.ts` — `C` (raw palette), `DK` (dark theme), `LT` (light theme) objects
   - `styles.ts` — `glass()`, `glassBtn()`, `toolbarBtn()` style helper functions (return CSSProperties)
   - `helpers.ts` — `uid()`, `sanitize()`, `sanitizeUrl()`, `fileIcon()`, `fileCat()`, `fmtSz()`
@@ -31,15 +43,43 @@ npm run type-check   # TypeScript checking (tsc --noEmit)
   - `types.ts` — Core interfaces: `Block`, `KBFile`, `AIMessage`, `ResearchResult`, `YouTubeResult`, `ThemeColors`, `Tab`, `PrototypeMode`
   - `index.ts` — Barrel re-export of all above
 
+### Directus Collections
+
+Defined in `directus-schema.json` and typed in `src/lib/directus.ts`:
+
+- `workspaces` — User workspaces (name, description, user_id → directus_users)
+- `canvas_blocks` — Block content per workspace (heading, subheading, text, image, youtube + sort_order)
+- `kb_files` — Knowledge Base files per workspace (file → directus_files, category)
+- `agent_configs` — AI agent configurations per workspace (provider, agent_id, display_name, is_active)
+- `user_api_keys` — User-provided API keys (user_id → directus_users, provider, hashed api_key)
+
 ### API Routes (server-side, `/src/app/api/`)
 
-- `chat/route.ts` — Profé AI proxy. Uses `ANTHROPIC_API_KEY` env var. Supports pluggable `AI_PROVIDER` (currently "anthropic", LaunchLemonade planned).
-- `research/route.ts` — Research panel. Uses Claude with `web_search` tool to return structured JSON results.
-- `youtube/route.ts` — YouTube search endpoint.
+- `chat/route.ts` — Profé AI proxy. Uses `ANTHROPIC_API_KEY` env var. Supports pluggable `AI_PROVIDER` (currently "anthropic", LaunchLemonade planned). **Not yet connected to frontend.**
+- `research/route.ts` — Research panel. Uses Claude with `web_search` tool to return structured JSON results. **Not yet connected to frontend.**
+- `youtube/route.ts` — YouTube search via Claude + web_search (not the official YouTube Data API). **Not yet connected to frontend.**
+
+### Current Implementation Status
+
+| Feature | Backend | Frontend |
+|---------|---------|----------|
+| Auth (Directus login/logout) | Done | Done |
+| Workspaces (list, create) | Done | Done |
+| KB file counts on workspace cards | Done | Done |
+| Canvas block editor | Directus collection ready | Placeholder only |
+| Knowledge Base file UI | Directus collection ready | Placeholder only |
+| Profé AI chat | API route ready | Not built |
+| Research panel | API route ready | Not built |
+| YouTube panel | API route ready | Not built |
+| Prototype Studio | — | Not built |
+| User API keys | Directus collection ready | Not built |
+| Agent configs | Directus collection ready | Not built |
+| CI/CD | — | Not built |
 
 ### Environment Variables
 
-- `ANTHROPIC_API_KEY` — Required for Profé chat and research
+- `NEXT_PUBLIC_DIRECTUS_URL` — Directus URL (default: `http://localhost:8055`)
+- `ANTHROPIC_API_KEY` — Required for Profé chat, research, and YouTube search
 - `ANTHROPIC_MODEL` — Optional, defaults to `claude-sonnet-4-20250514`
 - `AI_PROVIDER` — Optional, defaults to `"anthropic"`
 
@@ -56,16 +96,13 @@ Spline-inspired 3D luxury tech aesthetic. Every surface uses glassmorphism. Dark
 - **Min font sizes:** Body 20px, nav 16px, labels 13px (sparingly), headings 26px. Nothing below 13px.
 - **No component libraries** (Material UI, Chakra, etc.) — all custom.
 
-### Note on `AppInner.tsx`
-
-AppInner has its own inline copy of `C`, `uid`, icons, etc. The `src/lib/` modules are the canonical extracted versions. The duplication exists because AppInner is the original v6 prototype preserved as-is.
-
 ## Security
 
 - API keys never touch the frontend — all AI calls route through Next.js API routes
 - CSP headers configured in `next.config.js`
 - `sanitize()` and `sanitizeUrl()` in helpers for user input
+- **Note:** API routes currently have no auth verification or rate limiting — see `PLAN.md` Phase 1.2
 
 ## Deployment
 
-Scala Hosting VPS (Rocky Linux, SPanel). SSH port 6543. GitHub Actions deploys the build.
+Scala Hosting VPS (Rocky Linux, SPanel). SSH port 6543. GitHub Actions workflow planned but not yet created — see `PLAN.md` Phase 4.1.

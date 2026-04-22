@@ -319,10 +319,3 @@ export const I = {
     />
   ),
 };
-
-/** Map a MIME type to the appropriate icon element. */
-export const fileIcon = (mimeType: string): React.ReactElement => {
-  if (mimeType.startsWith("image")) return I.img;
-  if (mimeType.startsWith("video")) return I.yt;
-  return I.file;
-};
