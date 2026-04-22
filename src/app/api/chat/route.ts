@@ -1,70 +1,90 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // ── Profé AI Chat Route ──
-// Pluggable AI connector — supports Anthropic now, LaunchLemonade later
-// Set AI_PROVIDER env var to switch providers
+// Powered by LaunchLemonade — trained Profé agent
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { messages, system } = body;
-
-    if (!messages || !Array.isArray(messages)) {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const rl = checkRateLimit(`chat:${ip}`, 30, 60_000);
+    if (!rl.allowed) {
       return NextResponse.json(
-        { error: "messages array is required" },
+        { error: "Too many requests — please wait a moment" },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.resetIn / 1000)) } }
+      );
+    }
+
+    const body = await request.json();
+    const { message, conversationId } = body;
+
+    if (!message || typeof message !== "string") {
+      return NextResponse.json(
+        { error: "message string is required" },
         { status: 400 }
       );
     }
 
-    const provider = process.env.AI_PROVIDER || "anthropic";
-
-    if (provider === "anthropic") {
-      const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) {
-        return NextResponse.json(
-          { error: "ANTHROPIC_API_KEY is not configured" },
-          { status: 500 }
-        );
-      }
-
-      const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514";
-
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 4096,
-          system:
-            system ||
-            "You are Profé, an AI assistant for the 60 Watts of Clarity workspace platform. Help users with writing, research, prototyping, and knowledge management.",
-          messages,
-        }),
-      });
-
-      if (!response.ok) {
-        return NextResponse.json(
-          { error: `Anthropic API error: ${response.status}` },
-          { status: response.status }
-        );
-      }
-
-      const data = await response.json();
-      const text =
-        data.content?.map((c: { text?: string }) => c.text || "").join("") ||
-        "";
-      return NextResponse.json({ content: text });
+    if (message.length > 10000) {
+      return NextResponse.json(
+        { error: "Message too long (max 10,000 characters)" },
+        { status: 400 }
+      );
     }
 
-    // LaunchLemonade placeholder — add provider branch here when API docs available
-    return NextResponse.json(
-      { error: `Unknown AI_PROVIDER: ${provider}` },
-      { status: 500 }
-    );
+    const apiKey = process.env.LAUNCHLEMONADE_API_KEY;
+    const lemonadeId = process.env.LAUNCHLEMONADE_PROFE_ID;
+
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "LAUNCHLEMONADE_API_KEY is not configured" },
+        { status: 500 }
+      );
+    }
+    if (!lemonadeId) {
+      return NextResponse.json(
+        { error: "LAUNCHLEMONADE_PROFE_ID is not configured" },
+        { status: 500 }
+      );
+    }
+
+    const payload: Record<string, unknown> = {
+      lemonade_id: lemonadeId,
+      message,
+    };
+    if (conversationId) {
+      payload.conversation_id = conversationId;
+    }
+
+    const response = await fetch("https://api.launchlemonade.app/v1/chat", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const status = response.status;
+      if (status === 429) {
+        return NextResponse.json(
+          { error: "Rate limited — please wait and try again" },
+          { status: 429 }
+        );
+      }
+      return NextResponse.json(
+        { error: `LaunchLemonade API error: ${status}` },
+        { status }
+      );
+    }
+
+    const data = await response.json();
+    return NextResponse.json({
+      content: data.response || "",
+      conversationId: data.conversation_id || null,
+      tokensUsed: data.tokens_used || null,
+    });
   } catch {
     return NextResponse.json(
       { error: "Internal server error" },

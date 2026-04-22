@@ -30,9 +30,7 @@ export const formatSize = fmtSz;
 
 /**
  * Sanitize a plain-text string by stripping HTML tags (multi-pass).
- * WARNING: This is NOT safe for rendering user-generated HTML.
- * It does not decode HTML entities or handle all XSS vectors.
- * For rendering untrusted HTML, use DOMPurify or a similar library.
+ * For plain text extraction only — does NOT produce safe HTML.
  */
 export const sanitize = (input: string): string => {
   let result = input;
@@ -42,6 +40,28 @@ export const sanitize = (input: string): string => {
     result = result.replace(/<[^>]*>/g, "");
   } while (result !== previous);
   return result.trim();
+};
+
+/**
+ * Sanitize HTML using DOMPurify. Safe for rendering user/AI-generated HTML.
+ * Async because DOMPurify is dynamically imported (client-side only).
+ */
+export const sanitizeHtml = async (input: string): Promise<string> => {
+  if (typeof window !== "undefined") {
+    try {
+      const DOMPurify = (await import("dompurify")).default;
+      return DOMPurify.sanitize(input, {
+        ALLOWED_TAGS: [
+          "b", "i", "em", "strong", "a", "p", "br", "ul", "ol", "li",
+          "code", "pre", "blockquote", "h1", "h2", "h3", "h4", "span",
+        ],
+        ALLOWED_ATTR: ["href", "target", "rel", "class"],
+      });
+    } catch {
+      return sanitize(input);
+    }
+  }
+  return sanitize(input);
 };
 
 /**

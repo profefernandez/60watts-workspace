@@ -1,30 +1,19 @@
 // ── 60 Watts of Clarity — TypeScript Interfaces ──
 
-export interface Block {
-  id: string;
-  type: "heading" | "subheading" | "text" | "image" | "youtube";
-  content: string;
-  imageUrl?: string;
-  prompt?: string;
-  url?: string;
-  videoId?: string;
-}
-
-export interface KBFile {
-  id: string;
-  name: string;
-  type: string;
-  size: number;
-  data: string;
-  uploadedAt: string;
-  textContent: string | null;
-}
+// Re-export Directus collection types as the source of truth
+export type {
+  Workspace,
+  KBFile as DirectusKBFile,
+  AgentConfig,
+  UserApiKey,
+  CanvasBlock,
+  ContextSuggestion,
+} from "./directus";
 
 export interface AIMessage {
   role: "user" | "assistant";
   content: string;
-  image?: string;
-  imgPr?: string;
+  conversationId?: string;
 }
 
 export interface ResearchResult {
@@ -56,6 +45,36 @@ export interface ThemeColors {
   centerBg: string; headerBg: string; toolbarBg: string;
   sh: string; shL: string; ov: string; grid: string;
   accent: string; accentText: string;
+}
+
+export interface ContextRequest {
+  workspaceId: string;
+  canvasContent: string;
+  searchQuery?: string;
+  sources: ContextSource[];
+}
+
+export type ContextSource = "canvas" | "kb" | "research" | "youtube";
+
+export interface ContextResult {
+  inserted: ContextInsert[];
+  suggestions: ContextSuggestionItem[];
+}
+
+export interface ContextInsert {
+  blockId: string;
+  content: string;
+  sourceType: ContextSource;
+  sourceTitle: string;
+}
+
+export interface ContextSuggestionItem {
+  id: string;
+  sourceType: ContextSource;
+  sourceId: string;
+  title: string;
+  content: string;
+  relevanceNote: string;
 }
 
 export type Tab = "home" | "canvas" | "prototype" | "kb" | "research" | "youtube";
