@@ -56,10 +56,10 @@ Defined in `directus-schema.json` and typed in `src/lib/directus.ts`:
 
 ### API Routes (server-side, `/src/app/api/`)
 
-- `chat/route.ts` — Profé AI proxy. **Primary: LaunchLemonade** (`AI_PROVIDER=launchlemonade`). Calls the trained Profé agent via `POST https://api.launchlemonade.app/v1/chat`. Anthropic available as fallback (`AI_PROVIDER=anthropic`). **Not yet connected to frontend.**
-- `research/route.ts` — Research panel. Uses **Anthropic** Claude with `web_search` tool (software-specific capability). **Not yet connected to frontend.**
-- `youtube/route.ts` — YouTube search via **Anthropic** Claude + web_search. **Not yet connected to frontend.**
-- `context/route.ts` — **(Planned)** Context Engine. Uses Anthropic for web search gathering, then **LaunchLemonade** for evaluation and contextual insertion. See `PLAN.md` Phase 2.5.
+- `chat/route.ts` — Profé AI chat. **LaunchLemonade only.** Calls the trained Profé agent via `POST https://api.launchlemonade.app/v1/chat`. Uses server-side `LAUNCHLEMONADE_API_KEY` + `LAUNCHLEMONADE_PROFE_ID`. **Not yet connected to frontend.**
+- `research/route.ts` — Research panel. Uses **user-provided API key** (passed per-request from client, stored in Directus `user_api_keys`). Currently supports Anthropic Claude with `web_search` tool. **Not yet connected to frontend.**
+- `youtube/route.ts` — YouTube search. Uses **user-provided API key** (same pattern as research). Currently supports Anthropic Claude + web_search. **Not yet connected to frontend.**
+- `context/route.ts` — **(Planned)** Context Engine. **LaunchLemonade only.** Reads canvas + KB from Directus, sends to LaunchLemonade agent for analysis and contextual suggestions. See `PLAN.md` Phase 2.5.
 
 ### Current Implementation Status
 
@@ -71,23 +71,24 @@ Defined in `directus-schema.json` and typed in `src/lib/directus.ts`:
 | Canvas block editor | Directus collection ready | Placeholder only |
 | Knowledge Base file UI | Directus collection ready | Placeholder only |
 | Profé AI chat (LaunchLemonade) | API route ready | Not built |
-| **Context Engine** | Schema + types ready | Not built |
-| Research panel | API route ready | Not built |
-| YouTube panel | API route ready | Not built |
+| **Context Engine** (LaunchLemonade) | Schema + types ready | Not built |
+| Research panel (user API key) | API route ready | Not built |
+| YouTube panel (user API key) | API route ready | Not built |
 | Prototype Studio | — | Not built |
 | User API keys | Directus collection ready | Not built |
 | Agent configs | Directus collection ready | Not built |
 | CI/CD | — | Not built |
 
-### Environment Variables
+### Environment Variables (Server)
 
 - `NEXT_PUBLIC_DIRECTUS_URL` — Directus URL (default: `http://localhost:8055`)
-- `AI_PROVIDER` — `"launchlemonade"` (default) or `"anthropic"` (fallback)
 - `LAUNCHLEMONADE_API_KEY` — Required for Profé chat and Context Engine
 - `LAUNCHLEMONADE_PROFE_ID` — The Profé agent's lemonade_id in LaunchLemonade
 - `LAUNCHLEMONADE_CONTEXT_ID` — Optional separate Context Engine agent (falls back to Profé)
-- `ANTHROPIC_API_KEY` — Required for research, YouTube search, and Context Engine web search
-- `ANTHROPIC_MODEL` — Optional, defaults to `claude-sonnet-4-20250514`
+
+### User-Provided Keys (per-request, stored in Directus)
+
+Research and YouTube use the user's own API keys. No server-side Anthropic/Perplexity keys are stored. Users add their keys in Settings; keys are stored hashed in Directus `user_api_keys` and passed per-request to the API routes.
 
 ## Design System — NON-NEGOTIABLE
 

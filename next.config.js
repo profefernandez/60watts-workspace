@@ -20,7 +20,7 @@ const nextConfig = {
           {
             key: "Content-Security-Policy",
             value:
-              `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://image.pollinations.ai https://img.youtube.com ${directusUrl}; connect-src 'self' https://api.anthropic.com ${directusUrl}; frame-src 'self' https://www.youtube.com;`,
+              `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://image.pollinations.ai https://img.youtube.com ${directusUrl}; connect-src 'self' ${directusUrl}; frame-src 'self' https://www.youtube.com;`,
           },
         ],
       },

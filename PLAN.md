@@ -74,7 +74,7 @@ handles upload/download via its `/assets/` endpoint.
 
 Profé is powered by **LaunchLemonade** — a trained agent built in their no-code
 platform, called via `POST https://api.launchlemonade.app/v1/chat`. The `/api/chat`
-route already supports both LaunchLemonade (primary) and Anthropic (fallback).
+route is LaunchLemonade-only (no fallback provider).
 
 LaunchLemonade maintains conversation context via `conversation_id`, so multi-turn
 chat works natively. The Profé agent in LaunchLemonade can be trained with custom
@@ -107,19 +107,14 @@ intelligence layer underneath both the button and the agent.
 
 ### Provider Architecture
 
-The Context Engine uses **two providers** in a single request:
+The Context Engine is powered entirely by **LaunchLemonade**. A trained agent
+(either the Profé agent or a dedicated Context agent) receives the canvas
+snapshot and KB file contents, analyzes the document, and returns contextual
+findings with relevance classifications.
 
-- **Anthropic (web_search tool)** — for finding fresh online sources. This is the
-  same Claude + `web_search_20250305` tool that the existing `/api/research` and
-  `/api/youtube` routes already use. It's a software-specific capability that
-  LaunchLemonade doesn't expose directly.
-
-- **LaunchLemonade (Profé agent)** — for evaluating, sorting, and writing the
-  contextual insertions. The trained Profé agent understands the user's brand voice,
-  workspace context, and ethical guardrails. It receives the raw findings from
-  Anthropic + KB files and decides what gets inserted vs. suggested.
-
-This split means: Anthropic does the searching, Profé does the thinking.
+The agent in LaunchLemonade can be trained with web search capabilities,
+knowledge about the user's domain, and ethical guardrails — all configured
+in the no-code builder without any code changes to this platform.
 
 ### How It Works (User Flow)
 
@@ -133,25 +128,29 @@ User is writing an article in Canvas
    ┌─────────────────────────────────────────┐
    │        Context Engine (server)          │
    │                                         │
-   │  1. Read all canvas blocks → build      │
-   │     "document snapshot" (topic, tone,   │
-   │     structure, gaps)                    │
+   │  1. Read all canvas blocks + KB files   │
+   │     from Directus (free, local data)    │
    │                                         │
-   │  2. Scan sources in parallel:           │
-   │     ├─ KB files (text content)          │
-   │     ├─ Web research (Anthropic +        │
-   │     │  web_search tool)                 │
-   │     ├─ YouTube (relevant videos)        │
-   │     └─ Previous search history          │
+   │  2. Send to LaunchLemonade agent:       │
+   │     ├─ Canvas snapshot (topic, tone,    │
+   │     │  structure, gaps)                 │
+   │     ├─ KB file contents                 │
+   │     └─ Optional search query            │
    │                                         │
-   │  3. AI evaluates each finding:          │
+   │  3. Agent analyzes & searches:          │
+   │     The trained LaunchLemonade agent     │
+   │     evaluates the document, uses its    │
+   │     knowledge + search capabilities to  │
+   │     find supporting material            │
+   │                                         │
+   │  4. Agent classifies each finding:      │
    │     ├─ HIGH relevance → insert into     │
    │     │  canvas as new block              │
    │     └─ MEDIUM relevance → save as       │
    │        suggestion for later review      │
    │     (LOW relevance → discard)           │
    │                                         │
-   │  4. Return results to client            │
+   │  5. Return structured JSON to client    │
    └─────────────────────────────────────────┘
          │
          ▼
@@ -197,33 +196,30 @@ One new API route: `POST /api/context`
 }
 ```
 
-The route orchestrates multiple upstream calls: reads KB files from Directus,
-calls Anthropic with web_search for fresh research, calls the YouTube search
-logic, then uses a final AI pass to evaluate and sort everything by relevance.
+The route reads KB files from Directus (free), combines them with canvas content,
+and sends everything to the LaunchLemonade agent in a single API call. The agent's
+training handles analysis, searching, and relevance sorting.
 
 ### API Cost Model
 
 A single context press makes:
 
-- **1 Anthropic API call** with web_search tool — to gather fresh online sources
-  (same pattern as the existing `/api/research` route). Cost: ~$0.01-0.03.
-- **1 LaunchLemonade API call** — to evaluate findings, sort by relevance, and
-  write contextual insertions in the user's voice. Cost: per your LaunchLemonade
-  plan's token pricing.
-- **0 cost** for KB and canvas reads — those are Directus queries.
+- **1 LaunchLemonade API call** — the agent analyzes the document, searches for
+  supporting material, evaluates findings, and returns structured results. Cost:
+  per your LaunchLemonade plan's token pricing.
+- **0 cost** for KB and canvas reads — those are Directus queries (local data).
 
-Two API keys are needed: `ANTHROPIC_API_KEY` (for web search) and
-`LAUNCHLEMONADE_API_KEY` + `LAUNCHLEMONADE_CONTEXT_ID` (for the evaluation agent).
-The Context Engine can optionally use a separate LaunchLemonade agent
-(`LAUNCHLEMONADE_CONTEXT_ID`) trained specifically for context evaluation, or
-reuse the Profé agent (`LAUNCHLEMONADE_PROFE_ID`).
+Only the platform's `LAUNCHLEMONADE_API_KEY` is needed. The Context Engine can
+optionally use a separate LaunchLemonade agent (`LAUNCHLEMONADE_CONTEXT_ID`)
+trained specifically for context evaluation, or reuse the Profé agent
+(`LAUNCHLEMONADE_PROFE_ID`).
 
 ### Build Tasks
 
 | # | Task | Files | Notes |
 |---|------|-------|-------|
-| C1 | Create `/api/context` route | `src/app/api/context/route.ts` (new) | POST handler. Accepts `workspaceId`, `canvasContent`, optional `searchQuery`, and `sources` array. Step 1: reads KB files from Directus. Step 2: calls Anthropic with web_search tool to gather online sources. Step 3: sends all gathered material + canvas content to LaunchLemonade (Profé or a dedicated Context agent) for evaluation and sorting. Returns `inserted` and `suggestions` arrays. |
-| C2 | Build Context Engine prompt | Inside `/api/context/route.ts` | The LaunchLemonade agent receives gathered material and the canvas snapshot. It evaluates each finding and classifies as INSERT (high relevance), SUGGEST (medium), or DISCARD (low). The agent's training in LaunchLemonade handles brand voice, ethical guardrails, and writing style. The route parses the agent's response into structured JSON. |
+| C1 | Create `/api/context` route | `src/app/api/context/route.ts` (new) | POST handler. Accepts `workspaceId`, `canvasContent`, optional `searchQuery`, and `sources` array. Reads KB files from Directus, combines with canvas content, sends to LaunchLemonade agent for analysis. Parses response into `inserted` and `suggestions` arrays. |
+| C2 | Build Context Engine message | Inside `/api/context/route.ts` | Constructs a message for the LaunchLemonade agent containing: (1) the full canvas snapshot, (2) KB file contents, (3) optional search query. The agent is trained in LaunchLemonade's no-code builder to analyze documents, find supporting material, and classify findings as INSERT / SUGGEST / DISCARD. Returns structured JSON. |
 | C3 | Add Ctx button to Canvas toolbar | `src/components/CanvasEditor.tsx` | The `I.ctx` icon already exists. Button triggers context fetch, shows a loading shimmer across the canvas while working. |
 | C4 | Build insert logic | `src/components/CanvasEditor.tsx` | On context response, create new `canvas_blocks` in Directus for each `inserted` item. Place them at contextually appropriate positions (after the block they relate to, determined by AI). |
 | C5 | Build Suggestion Drawer | `src/components/SuggestionDrawer.tsx` (new) | Slide-out panel showing all `context_suggestions` for the workspace. Each card shows title, excerpt, source type icon, and relevance note. Actions: "Insert" (moves to canvas), "Dismiss" (marks dismissed), "Open Source" (links to original). Badge count on the drawer toggle. |
@@ -257,10 +253,10 @@ This collection and its types have already been added to `directus-schema.json`,
 Both are powered by **LaunchLemonade agents** — they may be the same agent or
 separate agents trained for different purposes. They are **complementary**:
 
-- **Context Engine** is automatic and document-focused. It reads the canvas,
-  uses Anthropic's web_search to gather sources, then sends everything to the
-  LaunchLemonade agent for evaluation. It answers: "What would make this
-  document better?"
+- **Context Engine** is automatic and document-focused. It reads the canvas
+  and KB files, sends everything to the LaunchLemonade agent, and gets back
+  findings classified by relevance. It answers: "What would make this document
+  better?"
 
 - **Profé** is conversational and user-directed. The user asks questions, gets
   explanations, requests rewrites. It answers: "What does the user want to know?"
@@ -276,11 +272,15 @@ separate agents trained for different purposes. They are **complementary**:
 
 | Key | What it powers | Required |
 |-----|---------------|----------|
-| `LAUNCHLEMONADE_API_KEY` | Auth for all LaunchLemonade API calls | Yes |
-| `LAUNCHLEMONADE_PROFE_ID` | The Profé chat agent (lemonade_id) | Yes |
+| `LAUNCHLEMONADE_API_KEY` | Auth for all LaunchLemonade API calls (Profé + Context) | Yes (server) |
+| `LAUNCHLEMONADE_PROFE_ID` | The Profé chat agent (lemonade_id) | Yes (server) |
 | `LAUNCHLEMONADE_CONTEXT_ID` | Optional separate Context Engine agent | No (falls back to Profé) |
-| `ANTHROPIC_API_KEY` | Web search in Research, YouTube, and Context Engine | Yes |
-| `ANTHROPIC_MODEL` | Which Claude model for web search calls | No (defaults to claude-sonnet-4-20250514) |
+| User's own API key | Research and YouTube search (e.g. Anthropic, Perplexity) | Yes (per-user, stored in Directus) |
+
+**Note:** The platform does NOT store any Anthropic/Perplexity API keys as
+server environment variables. Users provide their own keys in Settings, which
+are stored (hashed) in the `user_api_keys` Directus collection and passed
+per-request to the research/YouTube API routes.
 
 **Phase 2.5 outcome:** The Context button is functional. Users press it while
 writing and get relevant material auto-inserted plus a drawer of suggestions.
@@ -295,17 +295,23 @@ Add the remaining workspace panels and connect the existing API routes.
 
 ### 3.1 Research Panel
 
+Research uses the **user's own API key** (stored in Directus `user_api_keys`,
+passed per-request). The `/api/research` route acts as a proxy — the user's key
+never touches the browser, only the Next.js server.
+
 | # | Task | Files | Notes |
 |---|------|-------|-------|
-| 23 | Create `ResearchPanel` component | `src/components/ResearchPanel.tsx` (new) | Search input, calls `/api/research`, displays results as cards (title, summary, source link). Styled with glass panels. |
+| 23 | Create `ResearchPanel` component | `src/components/ResearchPanel.tsx` (new) | Search input, calls `/api/research` with user's API key from Directus. Displays results as cards (title, summary, source link). Shows "Add API key in Settings" prompt if no key configured. |
 | 24 | Add "Insert to Canvas" action | `ResearchPanel.tsx` | Button on each result card that creates a new `canvas_blocks` text block with the finding's content. |
 | 25 | Add Research tab to nav | `src/components/AppInner.tsx` | Add `research` to `ViewTab`, add nav item, wire the component. |
 
 ### 3.2 YouTube Panel
 
+YouTube also uses the **user's own API key** (same pattern as Research).
+
 | # | Task | Files | Notes |
 |---|------|-------|-------|
-| 26 | Create `YouTubePanel` component | `src/components/YouTubePanel.tsx` (new) | Search input, calls `/api/youtube`, displays video cards with thumbnails (`img.youtube.com/vi/{videoId}/mqdefault.jpg`). |
+| 26 | Create `YouTubePanel` component | `src/components/YouTubePanel.tsx` (new) | Search input, calls `/api/youtube` with user's API key. Displays video cards with thumbnails (`img.youtube.com/vi/{videoId}/mqdefault.jpg`). Shows key prompt if unconfigured. |
 | 27 | Add "Insert to Canvas" action | `YouTubePanel.tsx` | Button that creates a `canvas_blocks` youtube block with the video ID. |
 | 28 | Add YouTube tab to nav | `src/components/AppInner.tsx` | Add `youtube` to `ViewTab`, add nav item, wire the component. |
 
@@ -346,7 +352,7 @@ Production readiness: CI/CD, rate limiting, observability, and user self-service
 | # | Task | Files | Notes |
 |---|------|-------|-------|
 | 37 | Build Settings page | `src/components/Settings.tsx` (new) | User profile info, theme toggle (dark/light — `DK`/`LT` are already defined), and API key management. |
-| 38 | Wire `user_api_keys` collection | Settings page + API routes | Let users store their own LaunchLemonade or Anthropic keys. API routes check for a user key first, fall back to server env key. Keys stored hashed in Directus. |
+| 38 | Wire `user_api_keys` collection | Settings page + API routes | Let users store their own API keys for research/YouTube providers (Anthropic, Perplexity, etc.). Keys stored hashed in Directus. Frontend retrieves and passes per-request to `/api/research` and `/api/youtube`. |
 | 39 | Wire `agent_configs` collection | Settings page or workspace settings | Let users configure LaunchLemonade agents per workspace (lemonade_id, display name, active toggle). Different workspaces can use different trained agents. |
 
 ### 4.4 Content Safety & Sanitization
