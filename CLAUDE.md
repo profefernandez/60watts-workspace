@@ -33,15 +33,19 @@ npm run type-check   # TypeScript checking (tsc --noEmit)
 
 ### API Routes (server-side, `/src/app/api/`)
 
-- `chat/route.ts` — Profé AI proxy. Uses `ANTHROPIC_API_KEY` env var. Supports pluggable `AI_PROVIDER` (currently "anthropic", LaunchLemonade planned).
+- `chat/route.ts` — Profé AI proxy via LaunchLemonade API endpoint.
 - `research/route.ts` — Research panel. Uses Claude with `web_search` tool to return structured JSON results.
 - `youtube/route.ts` — YouTube search endpoint.
 
 ### Environment Variables
 
-- `ANTHROPIC_API_KEY` — Required for Profé chat and research
-- `ANTHROPIC_MODEL` — Optional, defaults to `claude-sonnet-4-20250514`
-- `AI_PROVIDER` — Optional, defaults to `"anthropic"`
+- `LAUNCHLEMONADE_API_URL` — Optional, defaults to `https://api.launchlemonade.com/v1/messages`
+- `LAUNCHLEMONADE_API_KEY` — Optional shared fallback key
+- `LAUNCHLEMONADE_PROFE_API_KEY` — Required for Profé chat
+- `LAUNCHLEMONADE_TOP_SEARCH_API_KEY` — Required for top search queries
+- `LAUNCHLEMONADE_CONTEXTUAL_SEARCH_API_KEY` — Required for contextual search queries
+- `LAUNCHLEMONADE_KB_SCAN_API_KEY` — Required for knowledge-base scan queries
+- `LAUNCHLEMONADE_MODEL` — Optional shared fallback model
 
 ## Design System — NON-NEGOTIABLE
 
