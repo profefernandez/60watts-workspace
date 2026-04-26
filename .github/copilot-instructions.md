@@ -11,9 +11,9 @@ This is **60 Watts of Clarity Workspace Platform** — the operating system for 
       4. ## Tech Stack
       5. - Next.js (React 18+) with App Router, TypeScript
          - - Tailwind CSS with custom design tokens
-           - - Anthropic Claude API (claude-sonnet-4-20250514) for Profé AI
+           - - LaunchLemonade API for Profé AI
              - - PostgreSQL (future), S3-compatible storage (future)
-               - - Deployment: Scala Hosting VPS (Rocky Linux, SPanel, SSH port 6543)
+               - - Deployment: SPanel NodeJS Manager (Next.js standalone). Connects to external Directus.
                 
                  - ## CRITICAL: Design System — DO NOT CHANGE
                  - The v6 prototype design is LOCKED. Spline-inspired 3D luxury tech aesthetic:
@@ -41,7 +41,7 @@ This is **60 Watts of Clarity Workspace Platform** — the operating system for 
                                            - - **Canvas:** Block-based editor (H1/H2/text/image/YouTube). Canvas-to-KB pipeline.
                                              - - **Prototype Studio:** Live HTML/CSS/JS with Split/Code/Preview modes. JetBrains Mono, rose gold cursor.
                                                - - **Knowledge Base:** Master KB + workspace views. Auto-categorized. Context preview with send-to-Canvas/Profé.
-                                                 - - **Profé AI:** Floating draggable chat. Claude-powered. Context-aware. Image gen via Pollinations. Prototype gen with CODE_START/CODE_END.
+                                                 - - **Profé AI:** Floating draggable chat. LaunchLemonade-powered. Context-aware. Image gen via Pollinations. Prototype gen with CODE_START/CODE_END.
                                                    - - **Research Panel:** AI web search with cited JSON results.
                                                      - - **YouTube Search:** Video search with embed.
                                                       
@@ -53,7 +53,7 @@ This is **60 Watts of Clarity Workspace Platform** — the operating system for 
                                                          ```
 
                                                          ## Development Phases
-                                                         - **Phase 1 (NOW):** Single-workspace MVP — Canvas, Prototype Studio, KB, Profé + Claude
+                                                         - **Phase 1 (NOW):** Single-workspace MVP — Canvas, Prototype Studio, KB, Profé + LaunchLemonade
                                                          - - **Phase 2:** Multi-workspace, home screen, connector library, Perplexity-style search
                                                            - - **Phase 3:** LaunchLemonade integration, per-workspace agents, session timeline, ethical guardrails
                                                              - - **Phase 4:** Multi-user, sharing, subscriptions, mobile

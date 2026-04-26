@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { messages, system } = body;
+    const { messages, agentId, threadId } = body;
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import directus from "./directus";
-import { readMe, login as sdkLogin, refresh as sdkRefresh, logout as sdkLogout } from "@directus/sdk";
+import { readMe, login as sdkLogin, refresh as sdkRefresh, logout as sdkLogout, registerUser } from "@directus/sdk";
 
 interface User {
   id: string;
@@ -16,6 +16,7 @@ interface AuthState {
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, first_name?: string, last_name?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -23,8 +24,9 @@ const AuthContext = createContext<AuthState>({
   user: null,
   loading: true,
   error: null,
-  login: async () => {},
-  logout: async () => {},
+  login: async () => { },
+  register: async () => { },
+  logout: async () => { },
 });
 
 export function useAuth() {
@@ -67,6 +69,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const register = useCallback(async (email: string, password: string, first_name?: string, last_name?: string) => {
+    setError(null);
+    setLoading(true);
+    try {
+      // Attempt to register the user via Directus standard registration
+      await directus.request(registerUser(email, password));
+      // Once registered, log them in immediately
+      await login(email, password);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Registration failed. Please ensure public registration is enabled in your Directus settings.";
+      setError(msg);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [login]);
+
   const logout = useCallback(async () => {
     try {
       await directus.request(sdkLogout({ mode: "json" }));
@@ -77,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, error, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

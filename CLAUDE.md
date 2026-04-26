@@ -72,4 +72,7 @@ AppInner has its own inline copy of `C`, `uid`, icons, etc. The `src/lib/` modul
 
 ## Deployment
 
-Scala Hosting VPS (Rocky Linux, SPanel). SSH port 6543. GitHub Actions deploys the build.
+Scala Hosting VPS (Rocky Linux, SPanel). 
+- **App Server:** Deployed via SPanel NodeJS Manager (`npm run build` -> `npm run start`).
+- **Database:** Connects to an existing external Directus instance. 
+- **Docker:** DO NOT attempt to run Directus locally using Docker for this Next.js project.
