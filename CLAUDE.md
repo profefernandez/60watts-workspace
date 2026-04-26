@@ -33,15 +33,13 @@ npm run type-check   # TypeScript checking (tsc --noEmit)
 
 ### API Routes (server-side, `/src/app/api/`)
 
-- `chat/route.ts` — Profé AI proxy. Uses `ANTHROPIC_API_KEY` env var. Supports pluggable `AI_PROVIDER` (currently "anthropic", LaunchLemonade planned).
+- `chat/route.ts` — Profé AI proxy. Powered exclusively by LaunchLemonade via `LAUNCHLEMONADE_API_KEY`.
 - `research/route.ts` — Research panel. Uses Claude with `web_search` tool to return structured JSON results.
 - `youtube/route.ts` — YouTube search endpoint.
 
 ### Environment Variables
 
-- `ANTHROPIC_API_KEY` — Required for Profé chat and research
-- `ANTHROPIC_MODEL` — Optional, defaults to `claude-sonnet-4-20250514`
-- `AI_PROVIDER` — Optional, defaults to `"anthropic"`
+- `LAUNCHLEMONADE_API_KEY` — Required for Profé chat capabilities
 
 ## Design System — NON-NEGOTIABLE
 
@@ -68,4 +66,7 @@ AppInner has its own inline copy of `C`, `uid`, icons, etc. The `src/lib/` modul
 
 ## Deployment
 
-Scala Hosting VPS (Rocky Linux, SPanel). SSH port 6543. GitHub Actions deploys the build.
+Scala Hosting VPS (Rocky Linux, SPanel). 
+- **App Server:** Deployed via SPanel NodeJS Manager (`npm run build` -> `npm run start`).
+- **Database:** Connects to an existing external Directus instance. 
+- **Docker:** DO NOT attempt to run Directus locally using Docker for this Next.js project.

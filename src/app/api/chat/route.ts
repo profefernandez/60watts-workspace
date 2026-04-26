@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // ── Profé AI Chat Route ──
-// Pluggable AI connector — supports Anthropic now, LaunchLemonade later
-// Set AI_PROVIDER env var to switch providers
+// Powered exclusively by LaunchLemonade
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { messages, system } = body;
+    const { messages, agentId, threadId } = body;
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -16,55 +15,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const provider = process.env.AI_PROVIDER || "anthropic";
-
-    if (provider === "anthropic") {
-      const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) {
-        return NextResponse.json(
-          { error: "ANTHROPIC_API_KEY is not configured" },
-          { status: 500 }
-        );
-      }
-
-      const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514";
-
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 4096,
-          system:
-            system ||
-            "You are Profé, an AI assistant for the 60 Watts of Clarity workspace platform. Help users with writing, research, prototyping, and knowledge management.",
-          messages,
-        }),
-      });
-
-      if (!response.ok) {
-        return NextResponse.json(
-          { error: `Anthropic API error: ${response.status}` },
-          { status: response.status }
-        );
-      }
-
-      const data = await response.json();
-      const text =
-        data.content?.map((c: { text?: string }) => c.text || "").join("") ||
-        "";
-      return NextResponse.json({ content: text });
+    const apiKey = process.env.LAUNCHLEMONADE_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "LAUNCHLEMONADE_API_KEY is not configured" },
+        { status: 500 }
+      );
     }
 
-    // LaunchLemonade placeholder — add provider branch here when API docs available
-    return NextResponse.json(
-      { error: `Unknown AI_PROVIDER: ${provider}` },
-      { status: 500 }
-    );
+    // LaunchLemonade expects the current message string, not the full array
+    const latestMessage = messages[messages.length - 1]?.content || "";
+
+    // LaunchLemonade integration
+    const response = await fetch("https://api.launchlemonade.app/v1/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        lemonade_id: agentId,
+        message: latestMessage,
+        conversation_id: threadId,
+      }),
+    });
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: `LaunchLemonade API error: ${response.status}` },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+    const text = data.response || "";
+    return NextResponse.json({ content: text });
   } catch {
     return NextResponse.json(
       { error: "Internal server error" },

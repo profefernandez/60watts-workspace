@@ -1,54 +1,5 @@
-version: "3.8"
-
-services:
-  database:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    environment:
-      POSTGRES_USER: directus
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
-      POSTGRES_DB: directus
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U directus"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  directus:
-    image: directus/directus:11
-    restart: unless-stopped
-    ports:
-      - "8055:8055"
-    depends_on:
-      database:
-        condition: service_healthy
-    environment:
-      SECRET: ${DIRECTUS_SECRET:-replace-with-a-long-random-string}
-      DB_CLIENT: pg
-      DB_HOST: database
-      DB_PORT: 5432
-      DB_DATABASE: directus
-      DB_USER: directus
-      DB_PASSWORD: ${DB_PASSWORD:-changeme}
-
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-jason@60watts.com}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
-
-      # CORS — allow frontend origin
-      CORS_ENABLED: "true"
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
-
-      # File storage
-      STORAGE_LOCATIONS: local
-      STORAGE_LOCAL_ROOT: /directus/uploads
-
-    volumes:
-      - directus_uploads:/directus/uploads
-      - directus_extensions:/directus/extensions
-
-volumes:
-  pgdata:
-  directus_uploads:
-  directus_extensions:
+# ── NO LOCAL DATABASE REQUIRED ──
+# This file was intentionally gutted because the AI Workspace connects to 
+# your EXISTING company Directus instance already running at localhost:8055.
+#
+# You do NOT need to run Docker for this Next.js project. Just run `npm run dev`!
