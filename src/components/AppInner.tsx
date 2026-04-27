@@ -5,8 +5,8 @@ import { glass } from "../lib/styles";
 import { I } from "../lib/icons";
 import { useAuth } from "../lib/auth";
 import directus from "../lib/directus";
-import type { Workspace, KBFile, WorkspaceItem, AIThread, AIMessage } from "../lib/directus";
-import { readItems, createItem, aggregate, updateItem } from "@directus/sdk";
+import type { Workspace, KBFile, WorkspaceItem, AIThread, AIMessage, KBDrawer } from "../lib/directus";
+import { readItems, createItem, aggregate, updateItem, uploadFiles, deleteItem } from "@directus/sdk";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -149,6 +149,7 @@ export default function AppInner() {
   const [showChat, setShowChat] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Global Profé state
   const [globalThreads, setGlobalThreads] = useState<AIThread[]>([]);
@@ -156,6 +157,10 @@ export default function AppInner() {
   const [globalMessages, setGlobalMessages] = useState<AIMessage[]>([]);
   const [globalInput, setGlobalInput] = useState("");
   const [isGlobalLoading, setIsGlobalLoading] = useState(false);
+
+  // Research Drawer state
+  const [showDrawer, setShowDrawer] = useState(false);
+  const [drawerItems, setDrawerItems] = useState<KBDrawer[]>([]);
 
   const fetchWorkspaces = useCallback(async () => {
     if (!user?.id) return;
@@ -305,6 +310,50 @@ export default function AppInner() {
     }
   }, [view, fetchGlobalChatHistory]);
 
+  // ── Research Drawer Handlers ──
+
+  const fetchDrawerItems = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const items = await directus.request(
+        readItems("kb_drawer", { sort: ["-date_updated"] })
+      );
+      setDrawerItems(items as KBDrawer[]);
+    } catch (err) {
+      console.error("Failed to fetch drawer items:", err);
+    }
+  }, [user?.id]);
+
+  useEffect(() => { fetchDrawerItems(); }, [fetchDrawerItems]);
+
+  const handleDeleteDrawerItem = async (id: string) => {
+    try {
+      await directus.request(deleteItem("kb_drawer", id));
+      setDrawerItems((prev) => prev.filter((item) => item.id !== id));
+    } catch (err) {
+      console.error("Failed to delete drawer item:", err);
+    }
+  };
+
+  const handleClipItem = (content: string) => {
+    navigator.clipboard.writeText(content);
+  };
+
+  const handleSaveToDrawer = async (msg: AIMessage) => {
+    try {
+      await directus.request(createItem("kb_drawer", {
+        title: "Saved from Chat",
+        content: msg.content,
+        snippet: msg.content.substring(0, 100) + "...",
+        suggested_type: "chat_history",
+        reviewed: false,
+      }));
+      fetchDrawerItems(); // Refresh the drawer UI automatically
+    } catch (err) {
+      console.error("Failed to save to drawer:", err);
+    }
+  };
+
   // ── Chat Handlers ──
 
   const handleSendMessage = async () => {
@@ -334,7 +383,9 @@ export default function AppInner() {
 
       const apiMessages = updatedMessages.map((m) => ({ role: m.role, content: m.content }));
       const response = await fetch("/api/chat", {
-        method: "POST", headers: { "Content-Type": "application/json"        body: JSON.stringify({ messages: apiMessages, agentId: activeThread?.agent_id, threadId }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: apiMessages, agentId: activeThread?.agent_id, threadId }),
       });
 
       if (!response.ok) throw new Error("API failed");
@@ -419,10 +470,51 @@ export default function AppInner() {
     setView("canvas");
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    alert(`Upload stubbed for: ${file.name}`);
+    if (!file || !activeWs?.id) return;
+    
+    setIsUploading(true);
+    try {
+      // 1. Upload the physical file to Directus
+      const formData = new FormData();
+      formData.append("file", file);
+      const uploadedFile = await directus.request(uploadFiles(formData));
+
+      // 2. Extract text if it's a readable document (for basic AI context)
+      let textContent = "";
+      if (file.type.startsWith("text/") || file.name.endsWith(".md") || file.name.endsWith(".csv")) {
+        textContent = await file.text();
+      }
+
+      // 3. Create the item in the Global Library (kb_files)
+      const newKbFile = await directus.request(createItem("kb_files", {
+        name: file.name,
+        type: file.type || "application/octet-stream",
+        size: file.size,
+        data: uploadedFile.id, // Store the Directus File UUID
+        textContent: textContent || null,
+        uploadedAt: new Date().toISOString()
+      }));
+
+      // 4. Pin the file to the current Workspace (workspace_items)
+      const nextSort = kbFiles.length + 1;
+      const wsItem = await directus.request(createItem("workspace_items", {
+        workspace_id: activeWs.id,
+        item_type: "kb_files",
+        item_id: newKbFile.id,
+        sort: nextSort,
+      }));
+
+      // 5. Update the UI
+      setKbFiles((prev) => [...prev, { ...newKbFile, wsItemId: wsItem.id } as UIFile]);
+    } catch (err) {
+      console.error("Upload failed:", err);
+      alert("Failed to upload file. Ensure your Directus instance accepts file uploads.");
+    } finally {
+      setIsUploading(false);
+      e.target.value = ""; // Reset input
+    }
   };
 
   const sensors = useSensors(
@@ -820,8 +912,17 @@ export default function AppInner() {
                     </div>
                   ) : (
                     globalMessages.map(msg => (
-                      <div key={msg.id} style={{ alignSelf: msg.role === "user" ? "flex-end" : "flex-start", background: msg.role === "user" ? `${C.rg}1A` : C.glass, border: `1px solid ${msg.role === "user" ? `${C.rg}40` : C.glassBrd}`, padding: "16px 20px", borderRadius: 16, maxWidth: "80%", fontSize: 15, color: C.cr, lineHeight: 1.6 }}>
-                        {msg.content}
+                      <div key={msg.id} style={{ alignSelf: msg.role === "user" ? "flex-end" : "flex-start", maxWidth: "80%" }}>
+                        <div style={{ background: msg.role === "user" ? `${C.rg}1A` : C.glass, border: `1px solid ${msg.role === "user" ? `${C.rg}40` : C.glassBrd}`, padding: "16px 20px", borderRadius: 16, fontSize: 15, color: C.cr, lineHeight: 1.6 }}>
+                          {msg.content}
+                        </div>
+                        {msg.role === "assistant" && (
+                          <div style={{ display: "flex", justifyContent: "flex-start", marginTop: 6, marginLeft: 4 }}>
+                            <button onClick={() => handleSaveToDrawer(msg)} style={{ background: "none", border: "none", color: C.tx4, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, padding: "4px 8px", borderRadius: 6, transition: "all 0.2s" }} onMouseEnter={(e) => { e.currentTarget.style.color = C.rg; e.currentTarget.style.background = `${C.rg}1A`; }} onMouseLeave={(e) => { e.currentTarget.style.color = C.tx4; e.currentTarget.style.background = "none"; }}>
+                              <span style={{ transform: "scale(0.8)" }}>{I.db}</span> Stash in Drawer
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
@@ -854,10 +955,10 @@ export default function AppInner() {
                     Files for {activeWs.name}
                   </p>
                 </div>
-                <label style={{ ...glass(), padding: "10px 20px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: C.rg, fontWeight: 600, transition: "background 0.2s" }}>
-                  {I.upload}
-                  <span style={{ fontSize: 15, fontFamily: "'Satoshi'" }}>Upload File</span>
-                  <input type="file" style={{ display: "none" }} onChange={handleFileUpload} />
+                <label style={{ ...glass(), padding: "10px 20px", display: "flex", alignItems: "center", gap: 8, cursor: isUploading ? "wait" : "pointer", color: C.rg, fontWeight: 600, transition: "all 0.2s", opacity: isUploading ? 0.7 : 1 }}>
+                  {isUploading ? <div className="loader spin" style={{ width: 16, height: 16, border: `2px solid ${C.rg}40`, borderTopColor: C.rg, borderRadius: "50%" }} /> : I.upload}
+                  <span style={{ fontSize: 15, fontFamily: "'Satoshi'" }}>{isUploading ? "Uploading..." : "Upload File"}</span>
+                  <input type="file" style={{ display: "none" }} onChange={handleFileUpload} disabled={isUploading} />
                 </label>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
@@ -950,8 +1051,17 @@ export default function AppInner() {
               </div>
             ) : (
               chatMessages.map((msg) => (
-                <div key={msg.id} style={{ alignSelf: msg.role === "user" ? "flex-end" : "flex-start", background: msg.role === "user" ? `${C.rg}1A` : C.glass, border: `1px solid ${msg.role === "user" ? `${C.rg}40` : C.glassBrd}`, padding: "12px 16px", borderRadius: 12, maxWidth: "85%", fontSize: 14, color: C.cr, lineHeight: 1.5 }}>
-                  {msg.content}
+                <div key={msg.id} style={{ alignSelf: msg.role === "user" ? "flex-end" : "flex-start", maxWidth: "85%" }}>
+                  <div style={{ background: msg.role === "user" ? `${C.rg}1A` : C.glass, border: `1px solid ${msg.role === "user" ? `${C.rg}40` : C.glassBrd}`, padding: "12px 16px", borderRadius: 12, fontSize: 14, color: C.cr, lineHeight: 1.5 }}>
+                    {msg.content}
+                  </div>
+                  {msg.role === "assistant" && (
+                    <div style={{ display: "flex", justifyContent: "flex-start", marginTop: 4, marginLeft: 4 }}>
+                      <button onClick={() => handleSaveToDrawer(msg)} style={{ background: "none", border: "none", color: C.tx4, fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, padding: "4px 8px", borderRadius: 6, transition: "all 0.2s" }} onMouseEnter={(e) => { e.currentTarget.style.color = C.rg; e.currentTarget.style.background = `${C.rg}1A`; }} onMouseLeave={(e) => { e.currentTarget.style.color = C.tx4; e.currentTarget.style.background = "none"; }}>
+                        <span style={{ transform: "scale(0.8)" }}>{I.db}</span> Stash in Drawer
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -969,6 +1079,97 @@ export default function AppInner() {
           </div>
         </div>
       )}
+
+      {/* ── Layer 4: Bottom Research Drawer ── */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: showDrawer ? 0 : -320,
+          left: sideW,
+          right: 0,
+          height: 320,
+          transition: "bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+          zIndex: 90,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* Drawer Handle */}
+        <button
+          onClick={() => {
+            setShowDrawer(!showDrawer);
+            if (!showDrawer) fetchDrawerItems();
+          }}
+          style={{
+            position: "absolute",
+            top: -40,
+            left: "50%",
+            transform: "translateX(-50%)",
+            height: 40,
+            padding: "0 24px",
+            background: C.ob2,
+            border: `1px solid ${C.glassBrd}`,
+            borderBottom: "none",
+            borderRadius: "16px 16px 0 0",
+            color: C.rg,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontFamily: "'Satoshi'",
+            fontSize: 14,
+            fontWeight: 600,
+            boxShadow: "0 -4px 12px rgba(0,0,0,0.2)",
+          }}
+        >
+          {I.db} Research Drawer {drawerItems.length > 0 && `(${drawerItems.length})`}
+        </button>
+
+        {/* Drawer Content */}
+        <div
+          style={{
+            ...glass(),
+            flex: 1,
+            borderBottom: "none",
+            borderRight: "none",
+            borderRadius: "24px 0 0 0",
+            boxShadow: "0 -10px 40px rgba(0,0,0,0.5)",
+            display: "flex",
+            flexDirection: "column",
+            background: "rgba(10,12,16,0.85)", // Darker glass to contrast with workspaces
+          }}
+        >
+          <div style={{ padding: "16px 24px", borderBottom: `1px solid ${C.glassBrd}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h3 style={{ margin: 0, color: C.cr, fontFamily: "'Clash Display'", fontSize: 18 }}>Discarded Research & Snippets</h3>
+            <button onClick={() => setShowDrawer(false)} style={{ background: "none", border: "none", color: C.tx3, cursor: "pointer" }}>{I.x}</button>
+          </div>
+          <div style={{ flex: 1, padding: 24, display: "flex", gap: 16, overflowX: "auto", overflowY: "hidden" }}>
+            {drawerItems.length === 0 ? (
+              <div style={{ color: C.tx4, margin: "auto", fontSize: 14 }}>Drawer is empty. Unused AI research will appear here.</div>
+            ) : (
+              drawerItems.map((item) => (
+                <div key={item.id} style={{ ...glass(), minWidth: 320, maxWidth: 320, padding: 20, display: "flex", flexDirection: "column", gap: 12, border: `1px solid ${C.glassBrd}` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <h4 style={{ margin: 0, color: C.rg, fontSize: 15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", paddingRight: 8 }}>{item.title || "Snippet"}</h4>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => handleClipItem(item.content || item.snippet)} title="Copy to clipboard" style={{ background: `${C.rg}1A`, border: `1px solid ${C.rg}40`, borderRadius: 6, color: C.rg, cursor: "pointer", padding: "4px 8px", fontSize: 12, fontWeight: 600 }}>Clip</button>
+                      <button onClick={() => handleDeleteDrawerItem(item.id)} title="Delete" style={{ background: "none", border: "none", color: C.red, cursor: "pointer", padding: 4, display: "flex" }}>{I.x}</button>
+                    </div>
+                  </div>
+                  <div style={{ flex: 1, overflowY: "auto", fontSize: 13, color: C.cr, lineHeight: 1.6, paddingRight: 4 }}>
+                    {item.snippet || item.content}
+                  </div>
+                  {item.source_url && (
+                    <a href={item.source_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: C.tx4, textDecoration: "none", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", marginTop: "auto" }}>
+                      🔗 {item.source_url}
+                    </a>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
