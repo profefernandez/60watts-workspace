@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  outputFileTracingRoot: __dirname,
   async headers() {
     return [
       {
@@ -17,8 +18,7 @@ const nextConfig = {
           {
             key: "Content-Security-Policy",
             value:
-              "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://image.pollinations.ai https://img.youtube.com; connect-src 'self' https://api.launchlemonade.com; frame-src 'self' https://www.youtube.com;",
-          },
+              "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://image.pollinations.ai https://img.youtube.com; connect-src 'self' https://api.
         ],
       },
     ];

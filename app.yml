@@ -1,8 +1,10 @@
 apps:
-  - name: "60watts-workspace"
+  - name: aiworkspace.60wattsofclarity.com
+    log_date_format: "YYYY-MM-DD HH:mm:ss Z"
+    cwd: /home/60wattsofclarity.com/aiworkspace.60wattsofclarity.com/
     script: "npm"
-    args: "start"
-    watch: false
+    args: "run start"
+    interpreter: "/usr/bin/node"
     env:
       NODE_ENV: "production"
-      PORT: 3074
+      PORT: 3061

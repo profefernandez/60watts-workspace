@@ -38,5 +38,5 @@ jobs:
             npm install
             npm run build
 
-            # Restarts the NodeJS process managed by SPanel
-            mkdir -p tmp && touch tmp/restart.txt
+            # Restarts the NodeJS process using PM2 and forces env update
+            pm2 restart app.yml --update-env || pm2 start app.yml
