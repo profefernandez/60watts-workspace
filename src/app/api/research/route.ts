@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // ── Research Panel API Route ──
-// Proxies research queries to the AI backend with web search instructions
+// Uses LaunchLemonade for search and synthesis
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,22 +15,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey =
+      process.env.LAUNCHLEMONADE_TOP_SEARCH_API_KEY ||
+      process.env.LAUNCHLEMONADE_CONTEXTUAL_SEARCH_API_KEY ||
+      process.env.LAUNCHLEMONADE_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: "ANTHROPIC_API_KEY is not configured" },
+        {
+          error:
+            "LAUNCHLEMONADE_TOP_SEARCH_API_KEY (or fallback LaunchLemonade key) is not configured",
+        },
         { status: 500 }
       );
     }
 
-    const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514";
+    const apiUrl =
+      process.env.LAUNCHLEMONADE_API_URL ||
+      "https://api.launchlemonade.com/v1/messages";
+    const model =
+      process.env.LAUNCHLEMONADE_TOP_SEARCH_MODEL ||
+      process.env.LAUNCHLEMONADE_CONTEXTUAL_SEARCH_MODEL ||
+      process.env.LAUNCHLEMONADE_MODEL ||
+      "launchlemonade-search-default";
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model,
@@ -41,7 +53,7 @@ export async function POST(request: NextRequest) {
             content: `Research the following topic: ${query}\n\nProvide 4-6 key findings. Format your response as a JSON array: [{"title":"Finding Title","summary":"2-3 sentence summary","source":"source name or url"}]\n\nRespond with ONLY the JSON array.`,
           },
         ],
-        tools: [{ type: "web_search_20250305", name: "web_search" }],
+        tools: [{ type: "web_search", name: "web_search" }],
       }),
     });
 
