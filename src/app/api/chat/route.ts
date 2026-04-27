@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // ── Profé AI Chat Route ──
-// Powered exclusively by LaunchLemonade
+// Uses LaunchLemonade for Profé conversations
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,28 +15,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.LAUNCHLEMONADE_API_KEY;
+    const apiKey =
+      process.env.LAUNCHLEMONADE_PROFE_API_KEY ||
+      process.env.LAUNCHLEMONADE_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: "LAUNCHLEMONADE_API_KEY is not configured" },
+        {
+          error:
+            "LAUNCHLEMONADE_PROFE_API_KEY (or LAUNCHLEMONADE_API_KEY) is not configured",
+        },
         { status: 500 }
       );
     }
 
-    // LaunchLemonade expects the current message string, not the full array
-    const latestMessage = messages[messages.length - 1]?.content || "";
+    const apiUrl =
+      process.env.LAUNCHLEMONADE_API_URL ||
+      "https://api.launchlemonade.com/v1/messages";
+    const model =
+      process.env.LAUNCHLEMONADE_PROFE_MODEL ||
+      process.env.LAUNCHLEMONADE_MODEL ||
+      "launchlemonade-profe-default";
 
-    // LaunchLemonade integration
-    const response = await fetch("https://api.launchlemonade.app/v1/chat", {
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        lemonade_id: agentId,
-        message: latestMessage,
-        conversation_id: threadId,
+        model,
+        max_tokens: 4096,
+        system:
+          system ||
+          "You are Profé, an AI assistant for the 60 Watts of Clarity workspace platform. Help users with writing, research, prototyping, and knowledge management.",
+        messages,
       }),
     });
 
@@ -48,7 +60,10 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    const text = data.response || "";
+    const text =
+      data.content?.map((c: { text?: string }) => c.text || "").join("") ||
+      data.text ||
+      "";
     return NextResponse.json({ content: text });
   } catch {
     return NextResponse.json(
