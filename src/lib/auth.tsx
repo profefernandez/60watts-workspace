@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const register = useCallback(async (email: string, password: string, first_name?: string, last_name?: string) => {
+  const register = useCallback(async (email: string, password: string, _first_name?: string, _last_name?: string) => {
     setError(null);
     setLoading(true);
     try {

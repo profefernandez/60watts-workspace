@@ -5,7 +5,7 @@ import { glass } from "../lib/styles";
 import { I } from "../lib/icons";
 import { useAuth } from "../lib/auth";
 import directus from "../lib/directus";
-import type { Workspace, KBFile, WorkspaceItem, AIThread, AIMessage, KBDrawer } from "../lib/directus";
+import type { Workspace, KBFile, AIThread, AIMessage, KBDrawer } from "../lib/directus";
 import { readItems, createItem, aggregate, updateItem, uploadFiles, deleteItem } from "@directus/sdk";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
@@ -473,7 +473,7 @@ export default function AppInner() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !activeWs?.id) return;
-    
+
     setIsUploading(true);
     try {
       // 1. Upload the physical file to Directus
@@ -930,12 +930,12 @@ export default function AppInner() {
 
                 <div style={{ padding: 24, borderTop: `1px solid ${C.glassBrd}`, background: "rgba(0,0,0,0.2)" }}>
                   <div style={{ ...glass(), padding: "12px 16px", display: "flex", gap: 12, alignItems: "center", background: C.ob2 }}>
-                    <input 
+                    <input
                       value={globalInput}
                       onChange={(e) => setGlobalInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") handleSendGlobalMessage(); }}
-                      placeholder="Ask the Global Profé to manage your workspaces..." 
-                      style={{ flex: 1, background: "transparent", border: "none", color: C.cr, outline: "none", fontSize: 16, fontFamily: "'Satoshi'" }} 
+                      placeholder="Ask the Global Profé to manage your workspaces..."
+                      style={{ flex: 1, background: "transparent", border: "none", color: C.cr, outline: "none", fontSize: 16, fontFamily: "'Satoshi'" }}
                     />
                     <button onClick={handleSendGlobalMessage} disabled={isGlobalLoading} style={{ background: `linear-gradient(135deg, ${C.rg}, ${C.rg2})`, border: "none", color: C.ob1, padding: "8px 16px", borderRadius: 8, cursor: isGlobalLoading ? "wait" : "pointer", display: "flex", alignItems: "center", gap: 8, fontWeight: 600, fontFamily: "'Satoshi'", opacity: isGlobalLoading ? 0.7 : 1 }}>
                       {isGlobalLoading ? "Thinking..." : <>{I.send} Send</>}
@@ -1068,11 +1068,11 @@ export default function AppInner() {
           </div>
           <div style={{ padding: 16, borderTop: `1px solid ${C.glassBrd}`, background: "rgba(0,0,0,0.2)" }}>
             <div style={{ display: "flex", gap: 8, background: C.ob2, borderRadius: 8, padding: 8, border: `1px solid ${C.glassBrd}` }}>
-              <input 
+              <input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleSendMessage(); }}
-                placeholder="Ask Profé..." style={{ flex: 1, background: "transparent", border: "none", color: C.cr, outline: "none", fontSize: 14, fontFamily: "'Satoshi'" }} 
+                placeholder="Ask Profé..." style={{ flex: 1, background: "transparent", border: "none", color: C.cr, outline: "none", fontSize: 14, fontFamily: "'Satoshi'" }}
               />
               <button onClick={handleSendMessage} disabled={isChatLoading} style={{ background: "transparent", border: "none", color: C.rg, cursor: isChatLoading ? "wait" : "pointer", display: "flex", alignItems: "center", opacity: isChatLoading ? 0.5 : 1 }}>{isChatLoading ? "..." : I.send}</button>
             </div>

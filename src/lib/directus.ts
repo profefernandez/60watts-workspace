@@ -20,7 +20,7 @@ export interface Workspace {
 export interface BaseLibraryItem {
   id: string;
   sort: number;
-  tags?: any[]; // M2M -> kb_tags
+  tags?: unknown[]; // M2M -> kb_tags
   user_created: string;
   date_created: string;
   user_updated: string;
@@ -75,7 +75,7 @@ export interface KBCanvas extends BaseLibraryItem {
   image: string; // M2O -> directus_files
   prompt: string;
   model: string;
-  parameters: any;
+  parameters: Record<string, unknown>;
   description: string;
 }
 
@@ -139,10 +139,10 @@ export interface AIMessage {
   model_used: string | null;
   prompt_tokens: number | null;
   completion_tokens: number | null;
-  kb_references: any | null; // JSON array of {type, id} pointing at library items used as context
-  attachments: any[] | null; // M2M -> directus_files (images/files explicitly referenced)
+  kb_references: unknown[] | null; // JSON array of {type, id} pointing at library items used as context
+  attachments: unknown[] | null; // M2M -> directus_files (images/files explicitly referenced)
   error: string | null; // Populated if the AI request failed
-  metadata: any | null; // JSON
+  metadata: Record<string, unknown> | null; // JSON
   user_created: string;
   date_created: string;
   user_updated: string;
