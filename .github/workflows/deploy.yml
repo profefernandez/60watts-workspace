@@ -24,7 +24,7 @@ jobs:
           REMOTE_USER: ${{ secrets.SSH_USERNAME }}
           REMOTE_PORT: ${{ secrets.SSH_PORT }}
           TARGET: "/home/60wattsofclaritycom/aiworkspace.60wattsofclarity.com"
-          EXCLUDE: "/node_modules/, /.next/, /.git/, /.github/"
+          EXCLUDE: "/node_modules/, /.next/, /.git/, /.github/, /.htaccess, /.env*, /tmp/"
 
       - name: Build and Restart App on Server
         uses: appleboy/ssh-action@v1.0.3

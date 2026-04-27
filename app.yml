@@ -1,0 +1,8 @@
+apps:
+  - name: "60watts-workspace"
+    script: "npm"
+    args: "start"
+    watch: false
+    env:
+      NODE_ENV: "production"
+      PORT: 3074
